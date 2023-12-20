@@ -446,7 +446,7 @@ export abstract class BasePHP implements IsomorphicLocalPHP {
 		}
 	}
 
-	defineConstant(key: string, value: string | number | null) {
+	defineConstant(key: string, value: string | boolean | number | null) {
 		let consts = {};
 		try {
 			consts = JSON.parse(
