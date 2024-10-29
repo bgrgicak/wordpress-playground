@@ -52,7 +52,8 @@ RUN cp wordpress-remote-asset-paths wordpress-static/
 
 # ZIP the static files
 RUN cd wordpress-static/ && \
-    zip -r ../wordpress-static.zip . && \
+    find . -exec touch -t $(date +%Y%m%d0000) {} \; && \
+    zip -rq -D -X -9 -A --compression-method deflate ../wordpress-static.zip . && \
     cd ..
 
 # Move ZIP to the public output directory
