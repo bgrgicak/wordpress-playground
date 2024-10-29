@@ -51,6 +51,9 @@ RUN find wordpress-static -type f | sed 's#^wordpress-static/##'> wordpress-remo
 RUN cp wordpress-remote-asset-paths wordpress-static/
 
 # ZIP the static files
+# WIP This is a proof of concept that we can make zips deterministic
+# and with that ensure rebuilds of the same code produce the same result
+# TODO: review zip flags, find a better source of the timestamp
 RUN cd wordpress-static/ && \
     find . -exec touch -t $(date +%Y%m%d0000) {} \; && \
     zip -rq -D -X -9 -A --compression-method deflate ../wordpress-static.zip . && \
@@ -147,4 +150,5 @@ RUN mv wordpress /wordpress && \
     cp wordpress-remote-asset-paths /wordpress/ && \
     cp wordpress-static.zip /wordpress/ && \
     cd /wordpress && \
-    zip /root/output/$OUT_FILENAME.zip -r .
+    find . -exec touch -t $(date +%Y%m%d0000) {} \; && \
+    zip -rq -D -X -9 -A --compression-method deflate /root/output/$OUT_FILENAME.zip -r .
