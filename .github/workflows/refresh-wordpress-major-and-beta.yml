@@ -14,13 +14,13 @@ on:
 jobs:
     build_wordpress_major_and_beta_push_to_github_and_deploy_website:
         # Only run this workflow from the trunk branch and when it's triggered by a maintainer listed below
-        if: >
-            github.ref == 'refs/heads/trunk' && (
-                github.actor == 'adamziel' ||
-                github.actor == 'dmsnell' ||
-                github.actor == 'bgrgicak' ||
-                github.actor == 'brandonpayton'
-            )
+        # if: >
+        #     github.ref == 'refs/heads/trunk' && (
+        #         github.actor == 'adamziel' ||
+        #         github.actor == 'dmsnell' ||
+        #         github.actor == 'bgrgicak' ||
+        #         github.actor == 'brandonpayton'
+        #     )
 
         runs-on: ubuntu-latest
         environment:
@@ -39,21 +39,15 @@ jobs:
                   curl -fsSL https://bun.sh/install | bash
             - uses: ./.github/actions/prepare-playground
             - name: 'Recompile WordPress'
+              id: build
               shell: bash
               env:
                   FORCE_REBUILD: ${{ github.event.inputs.force_rebuild }}
               run: |
-                  PATH="${PATH}:${HOME}/.bun/bin" npx nx bundle-wordpress:major-and-beta playground-wordpress-builds
-                  if [ $? -eq 0 ]; then
-                    echo "WordPress build succeeded"
-                    echo 'BUILD_FAILED=0' >> $GITHUB_OUTPUT
-                  else
-                    echo "WordPress build failed"
-                    echo 'BUILD_FAILED=1' >> $GITHUB_OUTPUT
-                  fi
+                  PATH="${PATH}:${HOME}/.bun/bin-FAIL" npx nx bundle-wordpress:major-and-beta playground-wordpress-builds
             - name: Check for uncommitted changes
               # Prevent commit if the build failed to avoid polluting the commit history
-              if: steps.changes.outputs.BUILD_FAILED == '0'
+              if: steps.build.outcome == 'success'
               id: changes
               run: |
                   if [ -z "$(git status --porcelain)" ]; then
@@ -66,19 +60,22 @@ jobs:
             - name: Push rebuilt WordPress to GitHub
               if: steps.changes.outputs.COMMIT_CHANGES == '1'
               run: |
-                  git config --global user.name "deployment_bot"
-                  git config --global user.email "deployment_bot@users.noreply.github.com"
-                  git remote set-url origin https://${{ secrets.GH_ACTOR }}:${{ secrets.GH_TOKEN }}@github.com/${{ github.repository }}
-                  git add -A
-                  git commit -a -m "Recompile WordPress major and beta versions"
-                  git pull --rebase
-                  # Push if the pull did not result in a conflict
-                  if [ $? -eq 0 ]; then
-                      git push origin HEAD:trunk
-                  fi;
+                  echo "TEST Pushing rebuilt WordPress to GitHub"
+              #   git config --global user.name "deployment_bot"
+              #   git config --global user.email "deployment_bot@users.noreply.github.com"
+              #   git remote set-url origin https://${{ secrets.GH_ACTOR }}:${{ secrets.GH_TOKEN }}@github.com/${{ github.repository }}
+              #   git add -A
+              #   git commit -a -m "Recompile WordPress major and beta versions"
+              #   git pull --rebase
+              #   # Push if the pull did not result in a conflict
+              #   if [ $? -eq 0 ]; then
+              #       git push origin HEAD:trunk
+              #   fi;
             - name: Deploy website
               if: steps.changes.outputs.COMMIT_CHANGES == '1'
-              uses: benc-uk/workflow-dispatch@v1
-              with:
-                  workflow: build-website.yml
-                  token: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  echo "TEST Deploying website"
+            #   uses: benc-uk/workflow-dispatch@v1
+            #   with:
+            #       workflow: build-website.yml
+            #       token: ${{ secrets.GITHUB_TOKEN }}
