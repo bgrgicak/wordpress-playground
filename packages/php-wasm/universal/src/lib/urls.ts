@@ -79,11 +79,18 @@ export function toAbsoluteUrl(url: string, baseUrl: URL): string {
 	}
 
 	/**
-	 * Base URLs can have subfolders in case of multi-sites,
-	 * or might include the Playground scope.
+	 * Each Playground URL must have a scope to correctly resolve the current site.
 	 *
-	 * To preserve the full base URL, we need to prefix the relative URL
-	 * with the base URL pathname.
+	 * If a scope is provided in the relative URL, we need to preserve it.
+	 *
+	 * If the scope is not provided in the relative URL,
+	 * we need to use the base URL pathname.
+	 *
+	 * We include the full base URL pathname in case it has subfolders in addition to the scope.
+	 * Base URLs can have subfolders in multi-sites that use subfolders instead of subdomains.
 	 */
+	if (url.startsWith('/scope:')) {
+		return baseUrl.origin + url;
+	}
 	return baseUrl.origin + joinPaths(baseUrl.pathname, url);
 }
