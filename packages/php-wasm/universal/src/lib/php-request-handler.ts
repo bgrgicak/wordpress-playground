@@ -4,6 +4,7 @@ import {
 	toRelativeUrl,
 	removePathPrefix,
 	DEFAULT_BASE_URL,
+	toAbsoluteUrl,
 } from './urls';
 import { PHP, PHPExecutionFailureError, normalizeHeaders } from './php';
 import { PHPResponse } from './php-response';
@@ -542,16 +543,12 @@ export class PHPRequestHandler {
 			 */
 			if (
 				response.httpStatusCode.toString().startsWith('3') &&
-				response.headers['location'] &&
-				!response.headers['location'][0].startsWith(this.#PROTOCOL)
+				response.headers['location']
 			) {
-				response.headers['location'] = [
-					[
-						`${this.#PROTOCOL}://`,
-						this.#HOST,
-						response.headers['location'],
-					].join(''),
-				];
+				response.headers['location'] = response.headers['location'].map(
+					(location) =>
+						toAbsoluteUrl(location, new URL(this.#ABSOLUTE_URL))
+				);
 			}
 			return response;
 		} catch (error) {
