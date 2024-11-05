@@ -29,6 +29,15 @@ describe('toAbsoluteUrl', () => {
 		).toBe('http://localhost/scope:123/index.php?test=1');
 	});
 
+	it('should preserve relative url scope if it exists', () => {
+		expect(
+			toAbsoluteUrl(
+				'/scope:relative/index.php',
+				new URL('http://localhost/scope:123/')
+			)
+		).toBe('http://localhost/scope:relative/index.php');
+	});
+
 	it('should preserve base url subfolder', () => {
 		expect(
 			toAbsoluteUrl(
