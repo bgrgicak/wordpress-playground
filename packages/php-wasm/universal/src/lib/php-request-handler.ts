@@ -1,5 +1,5 @@
 import { joinPaths } from '@php-wasm/util';
-import { prependBaseUrlToPathname } from '@php-wasm/scopes';
+import { appendPathnameToBaseUrlAndMaintainScope } from '@php-wasm/scopes';
 import {
 	ensurePathPrefix,
 	toRelativeUrl,
@@ -550,9 +550,9 @@ export class PHPRequestHandler {
 						if (isAbsoluteUrl(location)) {
 							return location;
 						}
-						return prependBaseUrlToPathname(
-							location,
-							new URL(this.#ABSOLUTE_URL)
+						return appendPathnameToBaseUrlAndMaintainScope(
+							new URL(this.#ABSOLUTE_URL),
+							location
 						);
 					}
 				);

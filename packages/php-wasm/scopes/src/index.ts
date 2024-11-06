@@ -138,42 +138,31 @@ export function removeURLScope(url: URL): URL {
 }
 
 /**
- * Prepends the base URL to a given pathname and maintains scope information.
+ * Appends a pathname to the base URL and maintains scope information.
  *
  * If the pathname is scoped, it will maintain scope information from the pathname.
- * Otherwise, it will prepend the pathname with the base URL pathname to preserve the scope.
+ * Otherwise, the pathname of the the base URL pathname to preserve the scope.
  *
  * If neither the pathname nor the base URL have scope information,
  * the base URL will be prepended to the pathname and the result will be unscoped.
  *
  * @example
  * ```js
- * prependBaseUrlToPathname('/scope:pathname/index.php', new URL('http://localhost/scope:base/'));
+ * appendPathnameToBaseUrlAndMaintainScope(new URL('http://localhost/scope:base/'), '/scope:pathname/index.php');
  * // 'http://localhost/scope:pathname/index.php'
  *
- * prependBaseUrlToPathname('/index.php', new URL('http://localhost/scope:base/'));
+ * appendPathnameToBaseUrlAndMaintainScope(new URL('http://localhost/scope:base/', '/index.php'));
  * // 'http://localhost/scope:base/index.php'
  * ```
  *
- * @param  pathname - The pathname to append to the base URL.
  * @param  baseUrl  - The base URL to prepend to the pathname.
+ * @param  pathname - The pathname to append to the base URL.
  * @returns The absolute URL.
  */
-export function prependBaseUrlToPathname(
-	pathname: string,
-	baseUrl: URL
+export function appendPathnameToBaseUrlAndMaintainScope(
+	baseUrl: URL,
+	pathname: string
 ): string {
-	/**
-	 * Each Playground URL must have a scope to correctly resolve the current site.
-	 *
-	 * If a scope is provided in the relative URL, we need to preserve it.
-	 *
-	 * If the scope is not provided in the relative URL,
-	 * we need to use the base URL pathname.
-	 *
-	 * We include the full base URL pathname in case it has subfolders in addition to the scope.
-	 * Base URLs can have subfolders in multi-sites that use subfolders instead of subdomains.
-	 */
 	if (isUrlPathnameScoped(pathname)) {
 		return baseUrl.origin + pathname;
 	}

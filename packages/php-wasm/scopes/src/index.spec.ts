@@ -3,7 +3,7 @@ import {
 	isURLScoped,
 	removeURLScope,
 	setURLScope,
-	prependBaseUrlToPathname,
+	appendPathnameToBaseUrlAndMaintainScope,
 } from './index';
 
 describe('getURLScope', () => {
@@ -63,62 +63,65 @@ describe('setURLScope', () => {
 	});
 });
 
-describe('prependBaseUrlToPathname', () => {
+describe('appendPathnameToBaseUrlAndMaintainScope', () => {
 	it('should preserve full base url when relative url is provided', () => {
 		expect(
-			prependBaseUrlToPathname(
-				'/wp-admin/index.php',
-				new URL('http://localhost/scope:123/')
+			appendPathnameToBaseUrlAndMaintainScope(
+				new URL('http://localhost/scope:123/'),
+				'/wp-admin/index.php'
 			)
 		).toBe('http://localhost/scope:123/wp-admin/index.php');
 	});
 	it('should preserve full base url when relative reference is provided', () => {
 		expect(
-			prependBaseUrlToPathname(
-				'index.php',
-				new URL('http://localhost/scope:123/')
+			appendPathnameToBaseUrlAndMaintainScope(
+				new URL('http://localhost/scope:123/'),
+				'index.php'
 			)
 		).toBe('http://localhost/scope:123/index.php');
 	});
 	it('should preserve full base url when relative current directory reference is provided', () => {
 		expect(
-			prependBaseUrlToPathname(
-				'./test',
-				new URL('http://localhost/scope:123/')
+			appendPathnameToBaseUrlAndMaintainScope(
+				new URL('http://localhost/scope:123/'),
+				'./test'
 			)
 		).toBe('http://localhost/scope:123/test');
 	});
 
 	it('should preserve query params', () => {
 		expect(
-			prependBaseUrlToPathname(
-				'index.php?test=1',
-				new URL('http://localhost/scope:123/')
+			appendPathnameToBaseUrlAndMaintainScope(
+				new URL('http://localhost/scope:123/'),
+				'index.php?test=1'
 			)
 		).toBe('http://localhost/scope:123/index.php?test=1');
 	});
 
 	it('should preserve relative url scope if it exists', () => {
 		expect(
-			prependBaseUrlToPathname(
-				'/scope:relative/index.php',
-				new URL('http://localhost/scope:123/')
+			appendPathnameToBaseUrlAndMaintainScope(
+				new URL('http://localhost/scope:123/'),
+				'/scope:relative/index.php'
 			)
 		).toBe('http://localhost/scope:relative/index.php');
 	});
 
 	it('should preserve base url subfolder', () => {
 		expect(
-			prependBaseUrlToPathname(
-				'index.php',
-				new URL('http://localhost/scope:123/subfolder/')
+			appendPathnameToBaseUrlAndMaintainScope(
+				new URL('http://localhost/scope:123/subfolder/'),
+				'index.php'
 			)
 		).toBe('http://localhost/scope:123/subfolder/index.php');
 	});
 
 	it('should return a unscoped url if base url is unscoped', () => {
 		expect(
-			prependBaseUrlToPathname('index.php', new URL('http://localhost/'))
+			appendPathnameToBaseUrlAndMaintainScope(
+				new URL('http://localhost/'),
+				'index.php'
+			)
 		).toBe('http://localhost/index.php');
 	});
 });
