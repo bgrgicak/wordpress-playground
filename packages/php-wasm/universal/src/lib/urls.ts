@@ -1,5 +1,3 @@
-import { joinPaths } from '@php-wasm/util';
-
 /**
  * The default base used to convert a path into the URL object.
  */
@@ -72,37 +70,4 @@ export function ensurePathPrefix(path: string, prefix: string): string {
  */
 export function isAbsoluteUrl(url: string): boolean {
 	return url.startsWith('http://') || url.startsWith('https://');
-}
-
-/**
- * Returns a absolute URL for the provided URL.
- *
- * If the provided URL is relative, it will be prepended with the base URL.
- * If a absolute URL is provided, it will return the provided URL and ignore
- * the base URL.
- *
- * @param  url     - The URL to convert to an absolute URL.
- * @param  baseUrl - The base URL to use to convert the relative URL to an absolute URL.
- * @returns The absolute URL.
- */
-export function toAbsoluteUrl(url: string, baseUrl: URL): string {
-	if (isAbsoluteUrl(url)) {
-		return url;
-	}
-
-	/**
-	 * Each Playground URL must have a scope to correctly resolve the current site.
-	 *
-	 * If a scope is provided in the relative URL, we need to preserve it.
-	 *
-	 * If the scope is not provided in the relative URL,
-	 * we need to use the base URL pathname.
-	 *
-	 * We include the full base URL pathname in case it has subfolders in addition to the scope.
-	 * Base URLs can have subfolders in multi-sites that use subfolders instead of subdomains.
-	 */
-	if (url.startsWith('/scope:')) {
-		return baseUrl.origin + url;
-	}
-	return baseUrl.origin + joinPaths(baseUrl.pathname, url);
 }

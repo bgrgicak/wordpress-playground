@@ -1,10 +1,10 @@
 import { joinPaths } from '@php-wasm/util';
+import { prependBaseUrlToPathname } from '@php-wasm/scopes';
 import {
 	ensurePathPrefix,
 	toRelativeUrl,
 	removePathPrefix,
 	DEFAULT_BASE_URL,
-	toAbsoluteUrl,
 	isAbsoluteUrl,
 } from './urls';
 import { PHP, PHPExecutionFailureError, normalizeHeaders } from './php';
@@ -546,8 +546,15 @@ export class PHPRequestHandler {
 				response.headers['location']
 			) {
 				response.headers['location'] = response.headers['location'].map(
-					(location) =>
-						toAbsoluteUrl(location, new URL(this.#ABSOLUTE_URL))
+					(location) => {
+						if (isAbsoluteUrl(location)) {
+							return location;
+						}
+						return prependBaseUrlToPathname(
+							location,
+							new URL(this.#ABSOLUTE_URL)
+						);
+					}
 				);
 			}
 			return response;

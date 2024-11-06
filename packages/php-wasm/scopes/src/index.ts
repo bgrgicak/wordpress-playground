@@ -1,3 +1,5 @@
+import { joinPaths } from '@php-wasm/util';
+
 /**
  * Scopes are unique strings, like `my-site`, used to uniquely brand
  * the outgoing HTTP traffic from each browser tab. This helps the
@@ -11,6 +13,25 @@
  *
  * For more information, see the README section on scopes.
  */
+
+/**
+ * Checks if the URL pathname is scoped.
+ *
+ * @example
+ * ```js
+ * isUrlPathnameScoped('/scope:my-site/index.php');
+ * // true
+ *
+ * isUrlPathnameScoped('/index.php');
+ * // false
+ * ```
+ *
+ * @param  url - The URL pathname to check.
+ * @returns `true` if the URL pathname is scoped, `false` otherwise.
+ */
+export function isUrlPathnameScoped(url: string): boolean {
+	return url.startsWith('/scope:');
+}
 
 /**
  * Checks if the given URL contains scope information.
@@ -28,7 +49,7 @@
  * @returns `true` if the URL contains scope information, `false` otherwise.
  */
 export function isURLScoped(url: URL): boolean {
-	return url.pathname.startsWith(`/scope:`);
+	return isUrlPathnameScoped(url.pathname);
 }
 
 /**
@@ -114,4 +135,47 @@ export function removeURLScope(url: URL): URL {
 	const parts = newUrl.pathname.split('/');
 	newUrl.pathname = '/' + parts.slice(2).join('/');
 	return newUrl;
+}
+
+/**
+ * Prepends the base URL to a given pathname and maintains scope information.
+ *
+ * If the pathname is scoped, it will maintain scope information from the pathname.
+ * Otherwise, it will prepend the pathname with the base URL pathname to preserve the scope.
+ *
+ * If neither the pathname nor the base URL have scope information,
+ * the base URL will be prepended to the pathname and the result will be unscoped.
+ *
+ * @example
+ * ```js
+ * prependBaseUrlToPathname('/scope:pathname/index.php', new URL('http://localhost/scope:base/'));
+ * // 'http://localhost/scope:pathname/index.php'
+ *
+ * prependBaseUrlToPathname('/index.php', new URL('http://localhost/scope:base/'));
+ * // 'http://localhost/scope:base/index.php'
+ * ```
+ *
+ * @param  pathname - The pathname to prepend the base URL to.
+ * @param  baseUrl  - The base URL to use to prepend to the pathname.
+ * @returns The absolute URL.
+ */
+export function prependBaseUrlToPathname(
+	pathname: string,
+	baseUrl: URL
+): string {
+	/**
+	 * Each Playground URL must have a scope to correctly resolve the current site.
+	 *
+	 * If a scope is provided in the relative URL, we need to preserve it.
+	 *
+	 * If the scope is not provided in the relative URL,
+	 * we need to use the base URL pathname.
+	 *
+	 * We include the full base URL pathname in case it has subfolders in addition to the scope.
+	 * Base URLs can have subfolders in multi-sites that use subfolders instead of subdomains.
+	 */
+	if (isUrlPathnameScoped(pathname)) {
+		return baseUrl.origin + pathname;
+	}
+	return baseUrl.origin + joinPaths(baseUrl.pathname, pathname);
 }
