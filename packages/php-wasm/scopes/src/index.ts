@@ -155,8 +155,8 @@ export function removeURLScope(url: URL): URL {
  * // 'http://localhost/scope:base/index.php'
  * ```
  *
- * @param  pathname - The pathname to prepend the base URL to.
- * @param  baseUrl  - The base URL to use to prepend to the pathname.
+ * @param  pathname - The pathname to append to the base URL.
+ * @param  baseUrl  - The base URL to prepend to the pathname.
  * @returns The absolute URL.
  */
 export function prependBaseUrlToPathname(
