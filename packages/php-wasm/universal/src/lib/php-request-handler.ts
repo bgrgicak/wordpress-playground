@@ -5,6 +5,7 @@ import {
 	removePathPrefix,
 	DEFAULT_BASE_URL,
 	toAbsoluteUrl,
+	isAbsoluteUrl,
 } from './urls';
 import { PHP, PHPExecutionFailureError, normalizeHeaders } from './php';
 import { PHPResponse } from './php-response';
@@ -319,9 +320,7 @@ export class PHPRequestHandler {
 	 * @param  request - PHP Request data.
 	 */
 	async request(request: PHPRequest): Promise<PHPResponse> {
-		const isAbsolute =
-			request.url.startsWith('http://') ||
-			request.url.startsWith('https://');
+		const isAbsolute = isAbsoluteUrl(request.url);
 		const requestedUrl = new URL(
 			// Remove the hash part of the URL as it's not meant for the server.
 			request.url.split('#')[0],
@@ -542,7 +541,8 @@ export class PHPRequestHandler {
 			 * to absolute URLs provided by the `location` header.
 			 */
 			if (
-				response.httpStatusCode.toString().startsWith('3') &&
+				response.httpStatusCode >= 300 &&
+				response.httpStatusCode <= 399 &&
 				response.headers['location']
 			) {
 				response.headers['location'] = response.headers['location'].map(
