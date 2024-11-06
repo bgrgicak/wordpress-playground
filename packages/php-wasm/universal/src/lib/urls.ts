@@ -63,6 +63,18 @@ export function ensurePathPrefix(path: string, prefix: string): string {
 }
 
 /**
+ * Checks if the given URL is an absolute URL.
+ *
+ * Absolute URLs start with `http://` or `https://`.
+ *
+ * @param  url - The URL string to check.
+ * @returns True if the URL is absolute, false otherwise.
+ */
+export function isAbsoluteUrl(url: string): boolean {
+	return url.startsWith('http://') || url.startsWith('https://');
+}
+
+/**
  * Returns a absolute URL for the provided URL.
  *
  * If the provided URL is relative, it will be prepended with the base URL.
@@ -74,7 +86,7 @@ export function ensurePathPrefix(path: string, prefix: string): string {
  * @returns The absolute URL.
  */
 export function toAbsoluteUrl(url: string, baseUrl: URL): string {
-	if (url.startsWith('http')) {
+	if (isAbsoluteUrl(url)) {
 		return url;
 	}
 
