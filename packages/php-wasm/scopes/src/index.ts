@@ -163,6 +163,26 @@ export function appendPathnameToBaseUrlAndMaintainScope(
 	baseUrl: URL,
 	pathname: string
 ): string {
+	/**
+	 * Base URL might include subpaths, like `/scope:my-site/` or `/scope:my-site/multisite-subsite/`.
+	 * These subpaths should be preserved in the resulting URL.
+	 *
+	 * But if the pathname starts with a scope like `/scope:my-site/`,
+	 * we use the pathname as is and don't prepend the base URL pathname.
+	 * In this case, we can assume the provided pathname is correct because
+	 * Playground paths start with a scope.
+	 *
+	 * Because Playground doesn't control the PHP code that is running,
+	 * we must account for both cases as they are technically possible and expected to work in PHP.
+	 *
+	 * If a redirect path is built based on the current URL, for example
+	 * `header('Location: ' . $_SERVER['REQUEST_URI']);`, then the redirect path
+	 * will include scope information.
+	 *
+	 * But when PHP make a redirect to a hardcoded path, they might not base it on
+	 * the current URL, so the redirect path might not include scope information.
+	 * For example, `header('Location: /wp-admin/');` expects to redirect to `/wp-admin/`.
+	 */
 	if (isUrlPathnameScoped(pathname)) {
 		return baseUrl.origin + pathname;
 	}
