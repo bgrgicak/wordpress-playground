@@ -26,11 +26,11 @@ import { joinPaths } from '@php-wasm/util';
  * // false
  * ```
  *
- * @param  url - The URL pathname to check.
+ * @param  pathname - The URL pathname to check.
  * @returns `true` if the URL pathname is scoped, `false` otherwise.
  */
-export function isUrlPathnameScoped(url: string): boolean {
-	return url.startsWith('/scope:');
+export function isUrlPathnameScoped(pathname: string): boolean {
+	return pathname.startsWith('/scope:');
 }
 
 /**
