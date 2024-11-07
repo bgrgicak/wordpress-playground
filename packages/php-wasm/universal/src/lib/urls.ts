@@ -69,5 +69,5 @@ export function ensurePathPrefix(path: string, prefix: string): string {
  * @returns True if the URL is absolute, false otherwise.
  */
 export function isAbsoluteUrl(url: string): boolean {
-	return url.startsWith('http://') || url.startsWith('https://');
+	return URL.canParse(url);
 }
