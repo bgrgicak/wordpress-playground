@@ -141,7 +141,7 @@ export function removeURLScope(url: URL): URL {
  * Appends a pathname to the base URL and maintains scope information.
  *
  * If the pathname is scoped, it will maintain scope information from the pathname.
- * Otherwise, the pathname of the the base URL pathname to preserve the scope.
+ * Otherwise, the pathname will be appended to the base URLs pathname to preserve the scope.
  *
  * If neither the pathname nor the base URL have scope information,
  * the base URL will be prepended to the pathname and the result will be unscoped.
