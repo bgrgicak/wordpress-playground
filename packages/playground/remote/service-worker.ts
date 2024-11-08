@@ -329,6 +329,17 @@ async function handleScopedRequest(event: FetchEvent, scope: string) {
 	const workerResponse = await convertFetchEventToPHPRequest(event);
 
 	if (
+		workerResponse.status >= 300 &&
+		workerResponse.status <= 399 &&
+		workerResponse.headers.get('location')
+	) {
+		return Response.redirect(
+			workerResponse.headers.get('location')![0],
+			workerResponse.status
+		);
+	}
+
+	if (
 		workerResponse.status === 404 &&
 		workerResponse.headers.get('x-backfill-from') === 'remote-host'
 	) {

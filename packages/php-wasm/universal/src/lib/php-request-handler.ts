@@ -540,23 +540,23 @@ export class PHPRequestHandler {
 			 * This resolves the issue because Safari correctly handles redirects
 			 * to absolute URLs provided by the `location` header.
 			 */
-			if (
-				response.httpStatusCode >= 300 &&
-				response.httpStatusCode <= 399 &&
-				response.headers['location']
-			) {
-				response.headers['location'] = response.headers['location'].map(
-					(location) => {
-						if (isAbsoluteUrl(location)) {
-							return location;
-						}
-						return appendPathnameToBaseUrlAndMaintainScope(
-							new URL(this.#ABSOLUTE_URL),
-							location
-						);
-					}
-				);
-			}
+			// if (
+			// 	response.httpStatusCode >= 300 &&
+			// 	response.httpStatusCode <= 399 &&
+			// 	response.headers['location']
+			// ) {
+			// 	response.headers['location'] = response.headers['location'].map(
+			// 		(location) => {
+			// 			if (isAbsoluteUrl(location)) {
+			// 				return location;
+			// 			}
+			// 			return appendPathnameToBaseUrlAndMaintainScope(
+			// 				new URL(this.#ABSOLUTE_URL),
+			// 				location
+			// 			);
+			// 		}
+			// 	);
+			// }
 			return response;
 		} catch (error) {
 			const executionError = error as PHPExecutionFailureError;
