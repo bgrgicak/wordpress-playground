@@ -7,6 +7,7 @@ import { loadPHPRuntime } from '@php-wasm/universal';
 import { getPHPLoaderModule } from './get-php-loader-module';
 import type { TCPOverFetchOptions } from './tcp-over-fetch-websocket';
 import { tcpOverFetchWebsocket } from './tcp-over-fetch-websocket';
+import { withSMTPSink } from '@php-wasm/universal';
 import { withICUData } from './with-icu-data';
 
 export interface LoaderOptions {
@@ -14,6 +15,7 @@ export interface LoaderOptions {
 	onPhpLoaderModuleLoaded?: (module: PHPLoaderModule) => void;
 	tcpOverFetch?: TCPOverFetchOptions;
 	withICU?: boolean;
+	withSMTPSink?: { port: number; onEmail: (m: any) => void };
 }
 
 /**
@@ -56,6 +58,29 @@ export async function loadWebRuntime(
 			emscriptenOptions,
 			loaderOptions.tcpOverFetch
 		);
+	}
+
+	if (loaderOptions.withSMTPSink) {
+		const prevWs = (await emscriptenOptions)['websocket'] || {};
+		const prevDecorator = prevWs.decorator as
+			| ((Base: any) => any)
+			| undefined;
+		const smtp = withSMTPSink(loaderOptions.withSMTPSink);
+		const smtpDecorator = smtp['websocket']?.decorator as (
+			Base: any
+		) => any;
+		emscriptenOptions = {
+			...(await emscriptenOptions),
+			websocket: {
+				...prevWs,
+				decorator: (Base: any) => {
+					const AfterPrev = prevDecorator
+						? prevDecorator(Base)
+						: Base;
+					return smtpDecorator(AfterPrev);
+				},
+			},
+		};
 	}
 
 	if (loaderOptions.withICU) {

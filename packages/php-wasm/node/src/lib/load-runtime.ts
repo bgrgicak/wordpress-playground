@@ -14,11 +14,13 @@ import { withXdebug } from './xdebug/with-xdebug';
 import { joinPaths } from '@php-wasm/util';
 import type { Promised } from '@php-wasm/util';
 import { dirname } from 'path';
+import { withSMTPSink } from '@php-wasm/universal';
 
 export interface PHPLoaderOptions {
 	emscriptenOptions?: EmscriptenOptions;
 	followSymlinks?: boolean;
 	withXdebug?: boolean;
+	withSMTPSink?: { port: number; onEmail: (m: any) => void };
 }
 
 type PHPLoaderOptionsForNode = PHPLoaderOptions & {
@@ -191,6 +193,26 @@ export async function loadNodeRuntime(
 
 	emscriptenOptions = await withICUData(emscriptenOptions);
 	emscriptenOptions = await withNetworking(emscriptenOptions);
+	if (options?.withSMTPSink) {
+		const prevWs = emscriptenOptions.websocket || {};
+		const prevDecorator = prevWs.decorator as
+			| ((Base: any) => any)
+			| undefined;
+		const smtp = withSMTPSink(options.withSMTPSink);
+		const smtpDecorator = smtp.websocket?.decorator as (Base: any) => any;
+		emscriptenOptions = {
+			...emscriptenOptions,
+			websocket: {
+				...prevWs,
+				decorator: (Base: any) => {
+					const AfterPrev = prevDecorator
+						? prevDecorator(Base)
+						: Base;
+					return smtpDecorator(AfterPrev);
+				},
+			},
+		};
+	}
 
 	return await loadPHPRuntime(
 		await getPHPLoaderModule(phpVersion),
