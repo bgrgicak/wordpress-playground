@@ -65,16 +65,7 @@ export class CouchbaseReplicatorManager {
 			remoteUrl = url.toString();
 		}
 
-		const remoteDb = new PouchDB(remoteUrl, {
-			// Custom fetch wrapper that bypasses the Playground Service
-			// Worker. Without this, the SW intercepts cross-origin
-			// replication requests and returns ERR_FAILED.
-			fetch: (url: string | Request, opts?: RequestInit) => {
-				const headers = new Headers(opts?.headers);
-				headers.set('X-Playground-Bypass-SW', '1');
-				return fetch(url, { ...opts, headers });
-			},
-		} as any);
+		const remoteDb = new PouchDB(remoteUrl);
 		const opts = { live: continuous, retry: continuous };
 
 		if (direction === 'push') {
@@ -123,4 +114,46 @@ export class CouchbaseReplicatorManager {
 	getReplicator(): any {
 		return this.replication;
 	}
+}
+
+/**
+ * Patches window.fetch to add X-Playground-Bypass-SW header for
+ * requests to the given origin. This is needed because the
+ * Playground Service Worker intercepts all fetch requests from
+ * controlled pages, including cross-origin PouchDB replication.
+ *
+ * Only installs the patch once per origin.
+ */
+const bypassedOrigins = new Set<string>();
+function installFetchBypass(origin: string) {
+	if (typeof window === 'undefined') {
+		return;
+	}
+	if (bypassedOrigins.has(origin)) {
+		return;
+	}
+	bypassedOrigins.add(origin);
+
+	const originalFetch = window.fetch.bind(window);
+	window.fetch = function patchedFetch(
+		input: RequestInfo | URL,
+		init?: RequestInit
+	) {
+		const url =
+			typeof input === 'string'
+				? input
+				: input instanceof URL
+					? input.toString()
+					: input.url;
+		try {
+			if (new URL(url, window.location.origin).origin === origin) {
+				const headers = new Headers(init?.headers);
+				headers.set('X-Playground-Bypass-SW', '1');
+				return originalFetch(input, { ...init, headers });
+			}
+		} catch {
+			// Invalid URL — pass through
+		}
+		return originalFetch(input, init);
+	};
 }
