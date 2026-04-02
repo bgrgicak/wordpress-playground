@@ -2,7 +2,7 @@ import type { PHPResponse, UniversalPHP } from '@php-wasm/universal';
 import { logger } from '@php-wasm/logger';
 /** @ts-ignore */
 import logSqlQueries from './sync-mu-plugin.php?raw';
-import { phpVar, phpVars } from '@php-wasm/util';
+import { phpVar } from '@php-wasm/util';
 
 export async function installSqlSyncMuPlugin(playground: UniversalPHP) {
 	if (!(await playground.fileExists('/wordpress/wp-content/mu-plugins'))) {
@@ -113,20 +113,27 @@ export async function replaySQLJournal(
 	playground: UniversalPHP,
 	journal: SQLJournalEntry[]
 ) {
-	const js = phpVars({ journal });
+	// Write journal data to a temp file instead of inlining it
+	// in the PHP code via phpVars(). The phpVars() helper uses
+	// String.fromCodePoint(...bytes) which overflows the stack
+	// on large payloads (serialized WP options can be 100KB+).
+	const journalJson = JSON.stringify(journal);
+	const encoder = new TextEncoder();
+	await playground.writeFile(
+		'/tmp/replay_journal.json',
+		encoder.encode(journalJson)
+	);
+
 	const result = await playground.run({
 		code: `<?php
-		// Use a file-based flag instead of define() because PHP
-		// constants persist across playground.run() calls in WASM,
-		// which permanently disables the SQL journal hooks.
 		file_put_contents('/tmp/REPLAYING_SQL', '1');
 
-		// Only load WordPress and replay the SQL queries now
 		require '/wordpress/wp-load.php';
-		playground_sync_replay_sql_journal(${js.journal});
+		$journal = json_decode(file_get_contents('/tmp/replay_journal.json'), true);
+		playground_sync_replay_sql_journal($journal);
 
-		// Remove the flag so the next run() can journal normally
 		@unlink('/tmp/REPLAYING_SQL');
+		@unlink('/tmp/replay_journal.json');
 	`,
 	});
 	assertEmptyOutput(result, 'Replay error.');
