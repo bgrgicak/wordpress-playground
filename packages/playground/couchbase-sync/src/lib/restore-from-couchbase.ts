@@ -37,7 +37,15 @@ export async function restoreFromCouchbase(
 	// on a hardcoded list. The snapshot may include custom tables
 	// not in WP_CORE_TABLES.
 	const allCollections = await cbDb.discoverCollections();
-	const dataCollections = allCollections.filter((c) => c !== 'wp_files');
+	const dataCollections = allCollections.filter(
+		(c) =>
+			c !== 'wp_files' &&
+			// Skip SQLite integration internal tables — the
+			// _wp_sqlite_ prefix is reserved and REPLACE INTO
+			// these tables throws "Invalid identifier" errors.
+			!c.startsWith('tbl_wp_sqlite_') &&
+			!c.startsWith('_wp_sqlite_')
+	);
 	// eslint-disable-next-line no-console
 	console.log(
 		`[CouchbaseSync] Restoring from ${dataCollections.length} collections:`,

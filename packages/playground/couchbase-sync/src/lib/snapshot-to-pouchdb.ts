@@ -49,7 +49,7 @@ export async function snapshotSqlToPouchDB(
 		require '/wordpress/wp-load.php';
 		global $wpdb;
 		$pdo = $GLOBALS['@pdo'];
-		$tables = $pdo->query("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE 'playground_%'")
+		$tables = $pdo->query("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE 'playground_%' AND name NOT LIKE '\\_wp\\_sqlite\\_%' ESCAPE '\\\\'")
 			->fetchAll(PDO::FETCH_COLUMN);
 		echo json_encode($tables);
 	`,
