@@ -121,20 +121,26 @@ export async function setupCouchbaseSync(
 		);
 	}
 
-	// 3. Set up the real-time sync pipeline for ongoing changes
-	//    Use a random large offset per site to avoid ID collisions,
-	//    and pass known max IDs from synced data so the local
-	//    sequence starts above any existing remote IDs.
+	// 3. Set up the real-time sync pipeline for ongoing changes.
+	//    The transport starts PAUSED so that setup artifacts
+	//    (mu-plugin install, autoincrement override) don't get
+	//    sent to PouchDB and corrupt the saved state.
 	const offset =
 		options.autoincrementOffset ?? (await getOrCreateOffset(cbDb));
 	const knownIds = await getMaxSyncedIds(cbDb);
 
 	const transport = new CouchbaseSyncTransport(cbDb);
+	transport.pause();
+
 	await setupPlaygroundSync(playground, {
 		autoincrementOffset: offset,
 		transport,
 		knownIds,
 	});
+
+	// Resume transport AFTER setup completes — only real user
+	// changes will flow to PouchDB from this point on.
+	transport.resume();
 
 	// 4. Optionally start remote replication
 	let replicator: CouchbaseReplicatorManager | null = null;

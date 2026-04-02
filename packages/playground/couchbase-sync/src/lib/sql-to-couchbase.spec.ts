@@ -110,7 +110,7 @@ describe('sqlJournalEntryToCouchbaseOps', () => {
 			expect(updateOp.fields.post_status).toBe('draft');
 		});
 
-		it('handles UPDATE with no extractable primary key', () => {
+		it('falls back to WHERE column for docId when PK not extractable', () => {
 			const entry: SQLJournalEntry = {
 				type: 'sql',
 				subtype: 'replay-query',
@@ -124,7 +124,8 @@ describe('sqlJournalEntryToCouchbaseOps', () => {
 			const ops = sqlJournalEntryToCouchbaseOps(entry);
 			expect(ops[0].type).toBe('update');
 			const updateOp = ops[0] as { docId: string | null };
-			expect(updateOp.docId).toBeNull();
+			// Falls back to extracting post_type=revision from WHERE
+			expect(updateOp.docId).toBe('wp_posts::revision');
 		});
 	});
 

@@ -3,6 +3,9 @@
 # compiled output
 .nx
 /dist
+
+# PouchDB test databases (LevelDB directories created by tests)
+*-[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]*/
 tmp
 var
 /out-tsc

@@ -7,6 +7,12 @@ import { couchbaseChangeToSqlJournalEntry } from './couchbase-to-sql';
 const WP_CONTENT_PATH = '/wordpress/wp-content';
 
 /**
+ * Max entries per replaySQLJournal call. Larger batches cause
+ * stack overflow in phpVars() base64 encoding.
+ */
+const SQL_BATCH_SIZE = 20;
+
+/**
  * Restores the full WordPress state from a CouchbaseDatabase
  * into the running WASM instance. This includes both:
  *
@@ -25,7 +31,8 @@ export async function restoreFromCouchbase(
 	let sqlCount = 0;
 	let fileCount = 0;
 
-	// 1. Restore database rows
+	// 1. Restore database rows (batched to avoid stack overflow
+	//    in phpVars serialization)
 	const dataCollections = cbDb.getDataCollectionNames();
 	const allSqlEntries: SQLJournalEntry[] = [];
 
@@ -39,10 +46,11 @@ export async function restoreFromCouchbase(
 		}
 	}
 
-	if (allSqlEntries.length > 0) {
-		await replaySQLJournal(playground, allSqlEntries);
-		sqlCount = allSqlEntries.length;
+	for (let i = 0; i < allSqlEntries.length; i += SQL_BATCH_SIZE) {
+		const batch = allSqlEntries.slice(i, i + SQL_BATCH_SIZE);
+		await replaySQLJournal(playground, batch);
 	}
+	sqlCount = allSqlEntries.length;
 
 	// 2. Restore filesystem files
 	const files = await cbDb.getAllFiles();

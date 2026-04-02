@@ -75,6 +75,7 @@ describe('Initial snapshot: database rows', () => {
 
 			// Snapshot the existing database into PouchDB
 			const cbDb = new CouchbaseDatabase({
+				adapter: 'memory',
 				name: `snap-test-${Date.now()}`,
 			});
 			await cbDb.open();
@@ -120,6 +121,7 @@ describe('Initial snapshot: database rows', () => {
 			expect(postCount).toBeGreaterThan(0);
 
 			const cbDb = new CouchbaseDatabase({
+				adapter: 'memory',
 				name: `snap-posts-${Date.now()}`,
 			});
 			await cbDb.open();
@@ -141,6 +143,7 @@ describe('Initial snapshot: database rows', () => {
 			await installSqlSyncMuPlugin(site);
 
 			const cbDb = new CouchbaseDatabase({
+				adapter: 'memory',
 				name: `snap-users-${Date.now()}`,
 			});
 			await cbDb.open();
@@ -189,6 +192,7 @@ describe('Initial snapshot: filesystem', () => {
 			expect(fileCount).toBeGreaterThan(10); // WP has many default files
 
 			const cbDb = new CouchbaseDatabase({
+				adapter: 'memory',
 				name: `snap-fs-${Date.now()}`,
 			});
 			await cbDb.open();
@@ -210,6 +214,7 @@ describe('Initial snapshot: filesystem', () => {
 			const site = await bootSite('http://snapshot-themes.test/');
 
 			const cbDb = new CouchbaseDatabase({
+				adapter: 'memory',
 				name: `snap-themes-${Date.now()}`,
 			});
 			await cbDb.open();
@@ -250,6 +255,7 @@ describe('Restore completeness', () => {
 			});
 
 			const cbDb = new CouchbaseDatabase({
+				adapter: 'memory',
 				name: `restore-test-${Date.now()}`,
 			});
 			await cbDb.open();
@@ -304,6 +310,7 @@ describe('Restore completeness', () => {
 			);
 
 			const cbDb = new CouchbaseDatabase({
+				adapter: 'memory',
 				name: `restore-fs-${Date.now()}`,
 			});
 			await cbDb.open();

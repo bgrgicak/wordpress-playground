@@ -48,6 +48,8 @@ export const WP_FILES_COLLECTION = 'wp_files';
 export interface CouchbaseDatabaseConfig {
 	name: string;
 	tablePrefix?: string;
+	/** PouchDB adapter name. Use 'memory' for tests. */
+	adapter?: string;
 }
 
 type ChangeCallback = (change: CouchbaseDocChange) => void;
@@ -89,7 +91,10 @@ export class CouchbaseDatabase {
 		}
 		this.knownCollections.add(WP_FILES_COLLECTION);
 
-		this.db = new PouchDB(this.config.name);
+		const pouchOpts = this.config.adapter
+			? { adapter: this.config.adapter }
+			: {};
+		this.db = new PouchDB(this.config.name, pouchOpts);
 		this.opened = true;
 
 		// Live change feed — routes changes to callbacks
@@ -247,7 +252,16 @@ export class CouchbaseDatabase {
 	}
 
 	private async applyUpdate(op: CouchbaseUpdateOp): Promise<void> {
-		if (!op.docId || Object.keys(op.fields).length === 0) {
+		if (!op.docId) {
+			// eslint-disable-next-line no-console
+			console.warn(
+				'[CouchbaseSync] Skipping UPDATE with null docId:',
+				op.collection,
+				op.query?.substring(0, 100)
+			);
+			return;
+		}
+		if (Object.keys(op.fields).length === 0) {
 			return;
 		}
 		const db = this.requireDb();
@@ -268,6 +282,12 @@ export class CouchbaseDatabase {
 
 	private async applyDelete(op: CouchbaseDeleteOp): Promise<void> {
 		if (!op.docId) {
+			// eslint-disable-next-line no-console
+			console.warn(
+				'[CouchbaseSync] Skipping DELETE with null docId:',
+				op.collection,
+				op.query?.substring(0, 100)
+			);
 			return;
 		}
 		const db = this.requireDb();

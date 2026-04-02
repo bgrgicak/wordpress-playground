@@ -21,6 +21,8 @@ export async function overrideAutoincrementSequences(
 ) {
 	const initializationResult = await playground.run({
 		code: `<?php
+		// Prevent setup queries from being captured by the journal
+		define('REPLAYING_SQL', true);
         require '/wordpress/wp-load.php';
         playground_sync_override_autoincrement_algorithm(
 			${phpVar(baseOffset)},
@@ -33,6 +35,7 @@ export async function overrideAutoincrementSequences(
 	// Get the current autoincrement ID value for all tables
 	const response = await playground.run({
 		code: `<?php
+		define('REPLAYING_SQL', true);
         require '/wordpress/wp-load.php';
 		$data = $GLOBALS['@pdo']
 			->query('SELECT * FROM playground_sequence')

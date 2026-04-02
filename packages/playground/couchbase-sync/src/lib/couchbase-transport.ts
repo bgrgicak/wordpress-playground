@@ -37,6 +37,7 @@ export class CouchbaseSyncTransport implements PlaygroundSyncTransport {
 	private pendingFsOps: FilesystemOperation[] = [];
 	private flushTimer: ReturnType<typeof setTimeout> | null = null;
 	private flushIntervalMs: number;
+	private _paused = false;
 
 	constructor(cbDb: CouchbaseDatabase, flushIntervalMs = 1000) {
 		this.cbDb = cbDb;
@@ -67,11 +68,30 @@ export class CouchbaseSyncTransport implements PlaygroundSyncTransport {
 	}
 
 	/**
+	 * Pause outbound sync. While paused, `sendChanges()` drops
+	 * all changes. Used during restore/snapshot to prevent setup
+	 * artifacts from poisoning PouchDB.
+	 */
+	pause(): void {
+		this._paused = true;
+	}
+
+	/**
+	 * Resume outbound sync after pause.
+	 */
+	resume(): void {
+		this._paused = false;
+	}
+
+	/**
 	 * Called by the sync system when local changes are ready to
 	 * be sent. Converts SQL entries to Couchbase document ops
 	 * and filesystem operations to file documents.
 	 */
 	sendChanges(envelope: TransportEnvelope): void {
+		if (this._paused) {
+			return;
+		}
 		// Handle SQL changes → Couchbase data documents
 		if (envelope.sql.length) {
 			const ops = envelope.sql.flatMap(sqlJournalEntryToCouchbaseOps);

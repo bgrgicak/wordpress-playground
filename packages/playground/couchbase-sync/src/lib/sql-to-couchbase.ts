@@ -78,26 +78,27 @@ function replayQueryToCouchbaseOp(
 	}
 
 	if (queryType === 'UPDATE') {
+		const docId =
+			extractPrimaryKeyFromWhere(query, entry.auto_increment_column) ??
+			// Fallback: try to extract any unique key from WHERE
+			extractAnyKeyFromWhere(query, tableName);
 		return {
 			type: 'update',
 			collection: tableName,
-			docId: extractPrimaryKeyFromWhere(
-				query,
-				entry.auto_increment_column
-			),
+			docId,
 			query,
 			fields: extractSetClause(query),
 		};
 	}
 
 	if (queryType === 'DELETE') {
+		const docId =
+			extractPrimaryKeyFromWhere(query, entry.auto_increment_column) ??
+			extractAnyKeyFromWhere(query, tableName);
 		return {
 			type: 'delete',
 			collection: tableName,
-			docId: extractPrimaryKeyFromWhere(
-				query,
-				entry.auto_increment_column
-			),
+			docId,
 			query,
 		};
 	}
@@ -227,6 +228,37 @@ function extractPrimaryKeyFromWhere(
 	);
 	const match = query.match(pattern);
 	return match ? match[2] : null;
+}
+
+/**
+ * Fallback key extraction: tries to find ANY column = value
+ * in the WHERE clause to construct a document ID. This handles
+ * WordPress queries like WHERE option_name = 'X' where the
+ * auto_increment column isn't in the WHERE clause.
+ */
+function extractAnyKeyFromWhere(
+	query: string,
+	tableName: string
+): string | null {
+	const whereMatch = query.match(
+		/WHERE\s+([\s\S]+?)(?:\s+ORDER|\s+LIMIT|$)/i
+	);
+	if (!whereMatch) {
+		return null;
+	}
+	const whereClause = whereMatch[1];
+	// Match first column = value pattern
+	const colValMatch = whereClause.match(
+		/(?:`|"|)(\w+)(?:`|"|)\s*=\s*('([^']*)'|"([^"]*)"|(\d+))/i
+	);
+	if (!colValMatch) {
+		return null;
+	}
+	const value = colValMatch[3] ?? colValMatch[4] ?? colValMatch[5];
+	if (value) {
+		return `${tableName}::${value}`;
+	}
+	return null;
 }
 
 /**

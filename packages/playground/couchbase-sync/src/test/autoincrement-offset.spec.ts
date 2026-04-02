@@ -16,6 +16,7 @@ PouchDB.plugin(require('pouchdb-adapter-memory'));
 describe('Autoincrement offset', () => {
 	it('generates a large random offset on first call', async () => {
 		const cbDb = new CouchbaseDatabase({
+			adapter: 'memory',
 			name: `offset-test-${Date.now()}`,
 		});
 		await cbDb.open();
@@ -29,6 +30,7 @@ describe('Autoincrement offset', () => {
 
 	it('returns the same offset on subsequent calls', async () => {
 		const cbDb = new CouchbaseDatabase({
+			adapter: 'memory',
 			name: `offset-persist-${Date.now()}`,
 		});
 		await cbDb.open();
@@ -42,9 +44,11 @@ describe('Autoincrement offset', () => {
 
 	it('different databases get different offsets', async () => {
 		const dbA = new CouchbaseDatabase({
+			adapter: 'memory',
 			name: `offset-a-${Date.now()}`,
 		});
 		const dbB = new CouchbaseDatabase({
+			adapter: 'memory',
 			name: `offset-b-${Date.now()}`,
 		});
 		await dbA.open();
@@ -62,6 +66,7 @@ describe('Autoincrement offset', () => {
 
 	it('getMaxSyncedIds returns max PK values per table', async () => {
 		const cbDb = new CouchbaseDatabase({
+			adapter: 'memory',
 			name: `maxids-test-${Date.now()}`,
 		});
 		await cbDb.open();
@@ -112,9 +117,11 @@ describe('Autoincrement offset', () => {
 
 	it('two sites with random offsets produce non-overlapping IDs', async () => {
 		const dbA = new CouchbaseDatabase({
+			adapter: 'memory',
 			name: `nonoverlap-a-${Date.now()}`,
 		});
 		const dbB = new CouchbaseDatabase({
+			adapter: 'memory',
 			name: `nonoverlap-b-${Date.now()}`,
 		});
 		await dbA.open();
@@ -138,6 +145,7 @@ describe('Autoincrement offset', () => {
 
 	it('knownIds ensures new IDs start above synced data', async () => {
 		const cbDb = new CouchbaseDatabase({
+			adapter: 'memory',
 			name: `knownids-test-${Date.now()}`,
 		});
 		await cbDb.open();
