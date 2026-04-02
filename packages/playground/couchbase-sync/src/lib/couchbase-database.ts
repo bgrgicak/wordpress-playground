@@ -277,6 +277,50 @@ export class CouchbaseDatabase {
 			if ((e as { status?: number }).status !== 404) {
 				throw e;
 			}
+			// The docId may have been derived from a non-PK WHERE
+			// clause (e.g. WHERE option_name = 'blogname') which
+			// doesn't match the PK-based ID used by the initial
+			// snapshot (e.g. wp_options::1). Search the collection
+			// for a document that matches the WHERE key/value.
+			await this.applyUpdateBySearch(op);
+		}
+	}
+
+	/**
+	 * Fallback for applyUpdate when the docId doesn't match any
+	 * existing document. Searches the collection for a document
+	 * whose fields match the WHERE clause key extracted in docId.
+	 */
+	private async applyUpdateBySearch(op: CouchbaseUpdateOp): Promise<void> {
+		const db = this.requireDb();
+		// docId is "collection::value" — the value is from the
+		// WHERE clause (e.g. "wp_options::blogname" where the WHERE
+		// was `option_name = 'blogname'`).
+		const whereValue = op.docId!.slice(op.collection.length + 2);
+
+		// Extract the WHERE column name from the query
+		const whereCol = extractWhereColumn(op.query);
+		if (!whereCol) {
+			return;
+		}
+
+		const result = await db.allDocs({
+			startkey: `${op.collection}::`,
+			endkey: `${op.collection}::\ufff0`,
+			include_docs: true,
+		});
+
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const match = result.rows.find((row: any) => {
+			return String(row.doc?.[whereCol]) === String(whereValue);
+		});
+
+		if (match) {
+			const doc = match.doc;
+			for (const [key, value] of Object.entries(op.fields)) {
+				doc[key] = value;
+			}
+			await db.put(doc);
 		}
 	}
 
@@ -292,7 +336,42 @@ export class CouchbaseDatabase {
 		}
 		const db = this.requireDb();
 		this.ensureCollection(op.collection);
-		await removeDoc(db, op.docId);
+
+		try {
+			const existing = await db.get(op.docId);
+			await db.remove(existing);
+		} catch (e: unknown) {
+			if ((e as { status?: number }).status !== 404) {
+				throw e;
+			}
+			// Fallback: search by WHERE clause value (same issue
+			// as applyUpdate — docId may use a non-PK column)
+			await this.applyDeleteBySearch(op);
+		}
+	}
+
+	private async applyDeleteBySearch(op: CouchbaseDeleteOp): Promise<void> {
+		const db = this.requireDb();
+		const whereValue = op.docId!.slice(op.collection.length + 2);
+		const whereCol = extractWhereColumn(op.query);
+		if (!whereCol) {
+			return;
+		}
+
+		const result = await db.allDocs({
+			startkey: `${op.collection}::`,
+			endkey: `${op.collection}::\ufff0`,
+			include_docs: true,
+		});
+
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const match = result.rows.find((row: any) => {
+			return String(row.doc?.[whereCol]) === String(whereValue);
+		});
+
+		if (match) {
+			await db.remove(match.doc);
+		}
 	}
 
 	private ensureCollection(name: string): void {
@@ -380,6 +459,16 @@ function pouchChangeToCouchbaseChange(change: any): CouchbaseDocChange | null {
 		deleted: false,
 		body,
 	};
+}
+
+/**
+ * Extracts the first column name from a SQL WHERE clause.
+ * E.g. "UPDATE wp_options SET ... WHERE `option_name` = 'blogname'"
+ * → "option_name"
+ */
+function extractWhereColumn(query: string): string | null {
+	const match = query.match(/WHERE\s+(?:`|"|)(\w+)(?:`|"|)\s*=/i);
+	return match ? match[1] : null;
 }
 
 /**

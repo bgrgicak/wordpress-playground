@@ -225,6 +225,11 @@ function playground_sync_ensure_required_tables()
  */
 function playground_sync_emit_mysql_query($query, $query_type, $table_name, $insert_columns, $last_insert_id, $affected_rows)
 {
+    // Don't emit queries during replay
+    if (file_exists('/tmp/REPLAYING_SQL')) {
+        return;
+    }
+
     // Is it an INSERT that generated a new autoincrement value?
     static $auto_increment_columns = null;
     if ($auto_increment_columns === null) {
@@ -282,6 +287,11 @@ function playground_sync_emit_mysql_query($query, $query_type, $table_name, $ins
  */
 function playground_sync_emit_transaction_query($command, $success, $nesting_level)
 {
+    // Don't emit queries during replay
+    if (file_exists('/tmp/REPLAYING_SQL')) {
+        return;
+    }
+
     // If we're in a nested transaction, SQLite won't really
     // persist anything to the database. Let's ignore it and wait
     // for the outermost transaction to finish.
@@ -357,18 +367,20 @@ function playground_sync_start()
     // when `is_replaying` is set to "yes".
     $pdo = $GLOBALS['@pdo'];
     $stmt = $pdo->prepare("INSERT OR REPLACE INTO playground_variables VALUES ('is_replaying', :is_replaying);");
-    $is_replaying = defined('REPLAYING_SQL') && REPLAYING_SQL;
+    // Check for the file-based flag. We use a file instead of
+    // define() because PHP constants persist across playground.run()
+    // calls in WASM, which would permanently disable the SQL hooks.
+    $is_replaying = file_exists('/tmp/REPLAYING_SQL');
     $stmt->execute([':is_replaying' => $is_replaying ? 'yes' : 'no']);
 
-    // Don't emit SQL queries we're just replaying from another peer.
-    if (!$is_replaying) {
-        add_filter('sqlite_last_insert_id', 'playground_sync_get_actual_last_insert_id', 0, 2);
-
-        // Listens for SQL queries executed by WordPress and emit them to the JS side:
-        // @todo – consider using SQLite's "update hook" instead of "sqlite_post_query" WordPress hook here.
-        add_action('sqlite_translated_query_executed', 'playground_sync_emit_mysql_query', -1000, 6);
-        add_action('sqlite_transaction_query_executed', 'playground_sync_emit_transaction_query', -1000, 3);
-    }
+    // Always register the hooks — they check the replaying flag
+    // dynamically. We can't skip registration here because
+    // mu-plugins use require_once, so playground_sync_start() only
+    // runs once per PHP process in WASM. If hooks were skipped
+    // during a restore call, they'd never be added.
+    add_filter('sqlite_last_insert_id', 'playground_sync_get_actual_last_insert_id', 0, 2);
+    add_action('sqlite_translated_query_executed', 'playground_sync_emit_mysql_query', -1000, 6);
+    add_action('sqlite_transaction_query_executed', 'playground_sync_emit_transaction_query', -1000, 3);
 
     add_filter('sqlite_translated_query_executed', 'playground_sync_override_autoincrement_on_newly_created_fields', -1000, 2);
 }

@@ -21,13 +21,15 @@ export async function overrideAutoincrementSequences(
 ) {
 	const initializationResult = await playground.run({
 		code: `<?php
-		// Prevent setup queries from being captured by the journal
-		define('REPLAYING_SQL', true);
+		// Use a file-based flag instead of define() because PHP
+		// constants persist across playground.run() calls in WASM.
+		file_put_contents('/tmp/REPLAYING_SQL', '1');
         require '/wordpress/wp-load.php';
         playground_sync_override_autoincrement_algorithm(
 			${phpVar(baseOffset)},
 			${phpVar(knownIds)}
 		);
+		@unlink('/tmp/REPLAYING_SQL');
 	    `,
 	});
 	assertEmptyOutput(initializationResult, 'Initialization failed.');
@@ -35,12 +37,13 @@ export async function overrideAutoincrementSequences(
 	// Get the current autoincrement ID value for all tables
 	const response = await playground.run({
 		code: `<?php
-		define('REPLAYING_SQL', true);
+		file_put_contents('/tmp/REPLAYING_SQL', '1');
         require '/wordpress/wp-load.php';
 		$data = $GLOBALS['@pdo']
 			->query('SELECT * FROM playground_sequence')
 			->fetchAll(PDO::FETCH_KEY_PAIR);
 		echo json_encode($data);
+		@unlink('/tmp/REPLAYING_SQL');
 		`,
 	});
 	return response.json;
@@ -113,12 +116,17 @@ export async function replaySQLJournal(
 	const js = phpVars({ journal });
 	const result = await playground.run({
 		code: `<?php
-		// Prevent reporting changes from queries we're just replaying
-		define('REPLAYING_SQL', true);
+		// Use a file-based flag instead of define() because PHP
+		// constants persist across playground.run() calls in WASM,
+		// which permanently disables the SQL journal hooks.
+		file_put_contents('/tmp/REPLAYING_SQL', '1');
 
 		// Only load WordPress and replay the SQL queries now
 		require '/wordpress/wp-load.php';
 		playground_sync_replay_sql_journal(${js.journal});
+
+		// Remove the flag so the next run() can journal normally
+		@unlink('/tmp/REPLAYING_SQL');
 	`,
 	});
 	assertEmptyOutput(result, 'Replay error.');

@@ -1,10 +1,6 @@
 import type { PlaygroundClient } from '@wp-playground/remote';
-import {
-	installSqlSyncMuPlugin,
-	setupPlaygroundSync,
-} from '@wp-playground/sync';
+import { installSqlSyncMuPlugin } from '@wp-playground/sync';
 import { CouchbaseDatabase } from './couchbase-database';
-import { CouchbaseSyncTransport } from './couchbase-transport';
 import {
 	CouchbaseReplicatorManager,
 	type CouchbaseReplicatorConfig,
@@ -17,7 +13,6 @@ import {
 	snapshotSqlToPouchDB,
 	snapshotFilesToPouchDB,
 } from './snapshot-to-pouchdb';
-import { getOrCreateOffset, getMaxSyncedIds } from './autoincrement-offset';
 
 export interface CouchbaseSyncOptions {
 	/**
@@ -54,7 +49,6 @@ export interface CouchbaseSyncOptions {
 
 export interface CouchbaseSyncHandle {
 	database: CouchbaseDatabase;
-	transport: CouchbaseSyncTransport;
 	replicator: CouchbaseReplicatorManager | null;
 	stop: () => void;
 }
@@ -128,26 +122,34 @@ export async function setupCouchbaseSync(
 		);
 	}
 
-	// 3. Set up the real-time sync pipeline for ongoing changes.
-	//    The transport starts PAUSED so that setup artifacts
-	//    (mu-plugin install, autoincrement override) don't get
-	//    sent to PouchDB and corrupt the saved state.
-	const offset =
-		options.autoincrementOffset ?? (await getOrCreateOffset(cbDb));
-	const knownIds = await getMaxSyncedIds(cbDb);
+	// 3. Set up periodic re-snapshot of the database to PouchDB.
+	//    The real-time SQL journal pipeline requires onMessage
+	//    callbacks from the PHP worker, which don't work for
+	//    Service Worker-handled HTTP requests in the browser
+	//    (Comlink serialization prevents message delivery during
+	//    active requests). Instead, we periodically re-snapshot
+	//    the full database state to catch all changes.
+	const SNAPSHOT_INTERVAL_MS = 5000;
+	let snapshotTimer: ReturnType<typeof setInterval> | null = null;
+	let isSnapshotting = false;
 
-	const transport = new CouchbaseSyncTransport(cbDb);
-	transport.pause();
+	const periodicSnapshot = async () => {
+		if (isSnapshotting) {
+			return;
+		}
+		isSnapshotting = true;
+		try {
+			await snapshotSqlToPouchDB(playground, cbDb);
+			await snapshotFilesToPouchDB(playground, cbDb);
+		} catch (e) {
+			// eslint-disable-next-line no-console
+			console.error('[CouchbaseSync] Periodic snapshot failed:', e);
+		} finally {
+			isSnapshotting = false;
+		}
+	};
 
-	await setupPlaygroundSync(playground, {
-		autoincrementOffset: offset,
-		transport,
-		knownIds,
-	});
-
-	// Resume transport AFTER setup completes — only real user
-	// changes will flow to PouchDB from this point on.
-	transport.resume();
+	snapshotTimer = setInterval(periodicSnapshot, SNAPSHOT_INTERVAL_MS);
 
 	// 4. Optionally start remote replication
 	let replicator: CouchbaseReplicatorManager | null = null;
@@ -158,9 +160,12 @@ export async function setupCouchbaseSync(
 
 	return {
 		database: cbDb,
-		transport,
+		transport: null as any,
 		replicator,
 		stop: () => {
+			if (snapshotTimer) {
+				clearInterval(snapshotTimer);
+			}
 			if (replicator) {
 				replicator.stop();
 			}
