@@ -1,5 +1,8 @@
 import type { PlaygroundClient } from '@wp-playground/remote';
-import { setupPlaygroundSync } from '@wp-playground/sync';
+import {
+	installSqlSyncMuPlugin,
+	setupPlaygroundSync,
+} from '@wp-playground/sync';
 import { CouchbaseDatabase } from './couchbase-database';
 import { CouchbaseSyncTransport } from './couchbase-transport';
 import {
@@ -98,6 +101,10 @@ export async function setupCouchbaseSync(
 	await cbDb.open();
 
 	const hasData = await hasCouchbaseData(cbDb);
+
+	// Install the mu-plugin early — restoreFromCouchbase() needs
+	// playground_sync_replay_sql_journal() which it defines.
+	await installSqlSyncMuPlugin(playground);
 
 	if (options.restoreOnBoot !== false && hasData) {
 		// 2a. Return visit: restore from PouchDB
