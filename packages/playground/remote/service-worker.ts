@@ -210,6 +210,17 @@ self.addEventListener('fetch', (event) => {
 		return;
 	}
 
+	// Don't intercept cross-origin requests (e.g. PouchDB
+	// replication to a remote CouchDB server).
+	if (url.origin !== self.location.origin) {
+		return;
+	}
+
+	// Allow PouchDB replication requests to bypass the SW.
+	if (event.request.headers.get('X-Playground-Bypass-SW')) {
+		return;
+	}
+
 	const isReservedUrl =
 		url.pathname.startsWith('/plugin-proxy') ||
 		url.pathname.startsWith('/client/index.js');

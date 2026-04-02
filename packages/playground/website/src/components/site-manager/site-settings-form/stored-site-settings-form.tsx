@@ -37,6 +37,13 @@ export function StoredSiteSettingsForm({
 			});
 		}
 		onSubmit?.();
+		// Couchbase sites need a reload so boot-site-client.ts
+		// picks up the new remote CouchDB config and starts the
+		// replicator. Other site types already have their own
+		// reload mechanisms for settings changes.
+		if (isCouchbase) {
+			window.location.reload();
+		}
 	};
 
 	const defaultValues = useMemo<Partial<SiteFormData>>(

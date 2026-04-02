@@ -168,6 +168,20 @@ export function bootSiteClient(
 					if (site.metadata.storage === 'couchbase') {
 						try {
 							const couchbaseConfig = site.metadata.couchdb;
+							const remoteDbUrl = couchbaseConfig?.url
+								? buildRemoteDbUrl(
+										couchbaseConfig.url,
+										couchbaseConfig.database
+									)
+								: null;
+							// eslint-disable-next-line no-console
+							console.log(
+								'[CouchbaseSync] Boot config:',
+								JSON.stringify({
+									hasRemote: !!couchbaseConfig?.url,
+									remoteDbUrl,
+								})
+							);
 							await setupCouchbaseSync(playgroundClient, {
 								database: {
 									name: `wp-playground-${siteSlug}`,
@@ -175,7 +189,10 @@ export function bootSiteClient(
 								restoreOnBoot: true,
 								remote: couchbaseConfig?.url
 									? {
-											url: couchbaseConfig.url,
+											url: buildRemoteDbUrl(
+												couchbaseConfig.url,
+												couchbaseConfig.database
+											),
 											credentials:
 												couchbaseConfig.username
 													? {
@@ -324,6 +341,16 @@ export function bootSiteClient(
 
 		signal.onabort = null;
 	};
+}
+
+/**
+ * Builds the full remote database URL by appending the database name
+ * to the server URL. PouchDB replication requires the full path
+ * (e.g. http://localhost:5984/my-database), not just the server root.
+ */
+function buildRemoteDbUrl(serverUrl: string, database: string): string {
+	const base = serverUrl.replace(/\/+$/, '');
+	return `${base}/${encodeURIComponent(database)}`;
 }
 
 /**

@@ -65,7 +65,16 @@ export class CouchbaseReplicatorManager {
 			remoteUrl = url.toString();
 		}
 
-		const remoteDb = new PouchDB(remoteUrl);
+		const remoteDb = new PouchDB(remoteUrl, {
+			// Custom fetch wrapper that bypasses the Playground Service
+			// Worker. Without this, the SW intercepts cross-origin
+			// replication requests and returns ERR_FAILED.
+			fetch: (url: string | Request, opts?: RequestInit) => {
+				const headers = new Headers(opts?.headers);
+				headers.set('X-Playground-Bypass-SW', '1');
+				return fetch(url, { ...opts, headers });
+			},
+		} as any);
 		const opts = { live: continuous, retry: continuous };
 
 		if (direction === 'push') {
@@ -76,10 +85,30 @@ export class CouchbaseReplicatorManager {
 			this.replication = localDb.sync(remoteDb, opts);
 		}
 
+		// eslint-disable-next-line no-console
+		console.log(
+			`[CouchbaseSync] Replication started: ${direction} → ${remoteUrl}`
+		);
+
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		this.replication.on('error', (error: any) => {
 			// eslint-disable-next-line no-console
 			console.error('[CouchbaseSync] Replication error:', error);
+		});
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		this.replication.on('change', (info: any) => {
+			// eslint-disable-next-line no-console
+			console.log(
+				'[CouchbaseSync] Replication change:',
+				info?.direction,
+				info?.change?.docs_written ?? info?.docs_written ?? 0,
+				'docs'
+			);
+		});
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		this.replication.on('denied', (err: any) => {
+			// eslint-disable-next-line no-console
+			console.error('[CouchbaseSync] Replication denied:', err);
 		});
 	}
 
