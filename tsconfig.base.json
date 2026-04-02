@@ -125,6 +125,9 @@
 			"@wp-playground/storage": [
 				"packages/playground/storage/src/index.ts"
 			],
+			"@wp-playground/couchbase-sync": [
+				"packages/playground/couchbase-sync/src/index.ts"
+			],
 			"@wp-playground/sync": ["packages/playground/sync/src/index.ts"],
 			"@wp-playground/tools": ["packages/playground/tools/src/index.ts"],
 			"@wp-playground/unit-test-utils": [

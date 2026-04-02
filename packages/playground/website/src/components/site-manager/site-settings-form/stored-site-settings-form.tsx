@@ -24,9 +24,18 @@ export function StoredSiteSettingsForm({
 		selectSiteBySlug(state, siteSlug)
 	)!;
 	const sitesAPI = useSitesAPI();
+	const isCouchbase = siteInfo.metadata.storage === 'couchbase';
 	const updateSite = async (data: SiteFormData) => {
 		await sitesAPI.setPhpVersion(data.phpVersion);
 		await sitesAPI.setNetworking(data.withNetworking);
+		if (isCouchbase) {
+			await sitesAPI.setCouchDBConfig({
+				url: data.couchdbUrl,
+				database: data.couchdbDatabase,
+				username: data.couchdbUsername || undefined,
+				password: data.couchdbPassword || undefined,
+			});
+		}
 		onSubmit?.();
 	};
 
@@ -37,6 +46,10 @@ export function StoredSiteSettingsForm({
 			phpVersion: siteInfo.metadata.runtimeConfiguration
 				.phpVersion as any,
 			withNetworking: !!siteInfo.metadata.runtimeConfiguration.networking,
+			couchdbUrl: siteInfo.metadata.couchdb?.url ?? '',
+			couchdbDatabase: siteInfo.metadata.couchdb?.database ?? '',
+			couchdbUsername: siteInfo.metadata.couchdb?.username ?? '',
+			couchdbPassword: siteInfo.metadata.couchdb?.password ?? '',
 		}),
 		[siteInfo]
 	);
@@ -46,6 +59,7 @@ export function StoredSiteSettingsForm({
 			className="is-stored-site"
 			onSubmit={updateSite}
 			defaultValues={defaultValues}
+			showCouchDBFields={isCouchbase}
 			enabledFields={{
 				wpVersion: false,
 				language: false,

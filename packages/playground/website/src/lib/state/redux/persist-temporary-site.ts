@@ -22,10 +22,11 @@ import {
 import { PlaygroundRoute, redirectTo } from '../url/router';
 import type { SiteStorageType } from './slice-sites';
 import { setActiveModal } from './slice-ui';
+import { setupCouchbaseSync } from '@wp-playground/couchbase-sync';
 
 export function persistTemporarySite(
 	siteSlug: string,
-	storageType: Extract<SiteStorageType, 'opfs' | 'local-fs'>,
+	storageType: Extract<SiteStorageType, 'opfs' | 'local-fs' | 'couchbase'>,
 	options: {
 		localFsHandle?: FileSystemDirectoryHandle;
 		siteName?: string;
@@ -123,98 +124,129 @@ export function persistTemporarySite(
 			}
 		}
 
-		let mountDescriptor: Omit<MountDescriptor, 'initialSyncDirection'>;
-		if (storageType === 'opfs') {
-			mountDescriptor = {
-				device: {
-					type: 'opfs',
-					path: getDirectoryPathForSlug(siteSlug),
-				},
-				mountpoint: '/wordpress',
-			} as const;
-		} else if (storageType === 'local-fs') {
-			let dirHandle = options.localFsHandle;
-			if (!dirHandle) {
-				try {
-					// Request permission to access the directory.
-					// https://developer.mozilla.org/en-US/docs/Web/API/Window/showDirectoryPicker
-					dirHandle = await (window as any).showDirectoryPicker({
-						// By specifying an ID, the browser can remember different directories
-						// for different IDs.If the same ID is used for another picker, the
-						// picker opens in the same directory.
-						id: 'playground-directory',
-						mode: 'readwrite',
-					});
-				} catch (e) {
-					// No directory selected but log the error just in case.
-					logger.error(e);
-					return;
-				}
-			}
-			await saveDirectoryHandle(siteSlug, dirHandle!);
-
-			mountDescriptor = {
-				device: {
-					type: 'local-fs',
-					handle: dirHandle!,
-				},
-				mountpoint: '/wordpress',
-			} as const;
-		} else {
-			throw new Error(`Unsupported device type: ${storageType}`);
-		}
-
-		dispatch(
-			updateClientInfo({
-				siteSlug,
-				changes: {
-					opfsMountDescriptor: mountDescriptor,
-					opfsSync: { status: 'syncing' },
-				},
-			})
-		);
-		try {
-			await playground!.mountOpfs(
-				{
-					...mountDescriptor,
-					initialSyncDirection: 'memfs-to-opfs',
-				},
-				(progress) => {
-					dispatch(
-						updateClientInfo({
-							siteSlug,
-							changes: {
-								opfsSync: {
-									status: 'syncing',
-									progress,
-								},
-							},
-						})
-					);
-				}
-			);
-
-			// @TODO: Create a notification to tell the user the operation is complete
+		if (storageType === 'couchbase') {
+			// Couchbase sync: use the couchbase-sync package to
+			// persist all SQL data into Couchbase Lite (IndexedDB).
+			// No OPFS mount needed - data lives in Couchbase.
 			dispatch(
 				updateClientInfo({
 					siteSlug,
 					changes: {
-						opfsSync: undefined,
+						opfsSync: { status: 'syncing' },
 					},
 				})
 			);
-		} catch (error) {
-			dispatch(
-				updateClientInfo({
-					siteSlug,
-					changes: {
-						opfsSync: {
-							status: 'error',
+			try {
+				await setupCouchbaseSync(playground!, {
+					database: { name: `wp-playground-${siteSlug}` },
+					restoreOnBoot: false,
+				});
+				dispatch(
+					updateClientInfo({
+						siteSlug,
+						changes: {
+							opfsSync: undefined,
 						},
+					})
+				);
+			} catch (error) {
+				dispatch(
+					updateClientInfo({
+						siteSlug,
+						changes: {
+							opfsSync: { status: 'error' },
+						},
+					})
+				);
+				throw error;
+			}
+		} else {
+			let mountDescriptor: Omit<MountDescriptor, 'initialSyncDirection'>;
+			if (storageType === 'opfs') {
+				mountDescriptor = {
+					device: {
+						type: 'opfs',
+						path: getDirectoryPathForSlug(siteSlug),
+					},
+					mountpoint: '/wordpress',
+				} as const;
+			} else if (storageType === 'local-fs') {
+				let dirHandle = options.localFsHandle;
+				if (!dirHandle) {
+					try {
+						dirHandle = await (window as any).showDirectoryPicker({
+							id: 'playground-directory',
+							mode: 'readwrite',
+						});
+					} catch (e) {
+						logger.error(e);
+						return;
+					}
+				}
+				await saveDirectoryHandle(siteSlug, dirHandle!);
+
+				mountDescriptor = {
+					device: {
+						type: 'local-fs',
+						handle: dirHandle!,
+					},
+					mountpoint: '/wordpress',
+				} as const;
+			} else {
+				throw new Error(`Unsupported device type: ${storageType}`);
+			}
+
+			dispatch(
+				updateClientInfo({
+					siteSlug,
+					changes: {
+						opfsMountDescriptor: mountDescriptor,
+						opfsSync: { status: 'syncing' },
 					},
 				})
 			);
-			throw error;
+			try {
+				await playground!.mountOpfs(
+					{
+						...mountDescriptor,
+						initialSyncDirection: 'memfs-to-opfs',
+					},
+					(progress) => {
+						dispatch(
+							updateClientInfo({
+								siteSlug,
+								changes: {
+									opfsSync: {
+										status: 'syncing',
+										progress,
+									},
+								},
+							})
+						);
+					}
+				);
+
+				dispatch(
+					updateClientInfo({
+						siteSlug,
+						changes: {
+							opfsSync: undefined,
+						},
+					})
+				);
+			} catch (error) {
+				dispatch(
+					updateClientInfo({
+						siteSlug,
+						changes: {
+							opfsSync: {
+								status: 'error',
+							},
+						},
+					})
+				);
+				throw error;
+			}
 		}
 
 		await dispatch(

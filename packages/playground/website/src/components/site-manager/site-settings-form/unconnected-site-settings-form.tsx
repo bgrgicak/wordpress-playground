@@ -1,7 +1,11 @@
 import type { SupportedPHPVersion } from '@php-wasm/universal';
 import { SupportedPHPVersionsList } from '@php-wasm/universal';
 import css from './style.module.css';
-import { CheckboxControl, SelectControl } from '@wordpress/components';
+import {
+	CheckboxControl,
+	SelectControl,
+	TextControl,
+} from '@wordpress/components';
 import { useEffect, useMemo } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import classNames from 'classnames';
@@ -21,6 +25,7 @@ export interface SiteSettingsFormProps {
 	className?: string;
 	enabledFields?: ConfigurableFields;
 	defaultValues?: Partial<SiteFormData>;
+	showCouchDBFields?: boolean;
 }
 
 export interface SiteFormData {
@@ -29,6 +34,10 @@ export interface SiteFormData {
 	language: string;
 	withNetworking: boolean;
 	multisite: boolean;
+	couchdbUrl: string;
+	couchdbDatabase: string;
+	couchdbUsername: string;
+	couchdbPassword: string;
 }
 
 export function UnconnectedSiteSettingsForm({
@@ -42,6 +51,7 @@ export function UnconnectedSiteSettingsForm({
 		language: true,
 		multisite: true,
 	},
+	showCouchDBFields = false,
 }: SiteSettingsFormProps) {
 	const mergedDefaults = useMemo<SiteFormData>(
 		() => ({
@@ -50,6 +60,10 @@ export function UnconnectedSiteSettingsForm({
 			language: '',
 			withNetworking: true,
 			multisite: false,
+			couchdbUrl: '',
+			couchdbDatabase: '',
+			couchdbUsername: '',
+			couchdbPassword: '',
 			...defaultValues,
 		}),
 		[defaultValues]
@@ -478,6 +492,92 @@ export function UnconnectedSiteSettingsForm({
 					)}
 				/>
 			</VStack>
+
+			{showCouchDBFields && (
+				<VStack spacing={3} className={css.formSection}>
+					<h3
+						style={{
+							margin: '8px 0 0',
+							fontSize: 13,
+							fontWeight: 600,
+						}}
+					>
+						Remote CouchDB Sync
+					</h3>
+					<p style={{ margin: 0, fontSize: 12, color: '#757575' }}>
+						Connect to a remote CouchDB server to sync this site
+						across devices.
+					</p>
+					<Controller
+						control={control}
+						name="couchdbUrl"
+						render={({ field: { onChange, ref, ...rest } }) => (
+							<TextControl
+								label="Server URL"
+								placeholder="https://couchdb.example.com:5984"
+								help={errors.couchdbUrl?.message}
+								className={classNames(css.addSiteInput, {
+									[css.invalidInput]: !!errors.couchdbUrl,
+								})}
+								onChange={(value) =>
+									setValue('couchdbUrl', value)
+								}
+								{...rest}
+							/>
+						)}
+					/>
+					<Controller
+						control={control}
+						name="couchdbDatabase"
+						render={({ field: { onChange, ref, ...rest } }) => (
+							<TextControl
+								label="Database name"
+								placeholder="my-wordpress-site"
+								help={errors.couchdbDatabase?.message}
+								className={classNames(css.addSiteInput, {
+									[css.invalidInput]:
+										!!errors.couchdbDatabase,
+								})}
+								onChange={(value) =>
+									setValue('couchdbDatabase', value)
+								}
+								{...rest}
+							/>
+						)}
+					/>
+					<Controller
+						control={control}
+						name="couchdbUsername"
+						render={({ field: { onChange, ref, ...rest } }) => (
+							<TextControl
+								label="Username"
+								placeholder="admin"
+								className={css.addSiteInput}
+								onChange={(value) =>
+									setValue('couchdbUsername', value)
+								}
+								{...rest}
+							/>
+						)}
+					/>
+					<Controller
+						control={control}
+						name="couchdbPassword"
+						render={({ field: { onChange, ref, ...rest } }) => (
+							<TextControl
+								label="Password"
+								type="password"
+								placeholder=""
+								className={css.addSiteInput}
+								onChange={(value) =>
+									setValue('couchdbPassword', value)
+								}
+								{...rest}
+							/>
+						)}
+					/>
+				</VStack>
+			)}
 			{footer}
 		</form>
 	);

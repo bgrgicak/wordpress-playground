@@ -85,6 +85,7 @@
 		"@codemirror/search": "6.5.11",
 		"@codemirror/state": "6.5.2",
 		"@codemirror/view": "6.38.3",
+		"@couchbase/lite-js": "1.0.0",
 		"@docusaurus/plugin-content-docs": "3.9.2",
 		"@docusaurus/theme-common": "3.9.2",
 		"@modelcontextprotocol/sdk": "1.27.0",

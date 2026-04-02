@@ -435,7 +435,12 @@ function parseSearchParams(searchParams: URLSearchParams) {
  * NOTE: We are using different storage terms than our query API in order
  * to be more explicit about storage medium in the site metadata format.
  */
-export const SiteStorageTypes = ['opfs', 'local-fs', 'none'] as const;
+export const SiteStorageTypes = [
+	'opfs',
+	'local-fs',
+	'couchbase',
+	'none',
+] as const;
 export type SiteStorageType = (typeof SiteStorageTypes)[number];
 
 /**
@@ -445,6 +450,16 @@ export type SiteLogo = {
 	mime: string;
 	data: string;
 };
+
+/**
+ * Remote CouchDB configuration for cross-device sync.
+ */
+export interface CouchDBConfig {
+	url: string;
+	username?: string;
+	password?: string;
+	database: string;
+}
 
 // TODO: Create a schema for this as the design matures
 /**
@@ -467,6 +482,12 @@ export interface SiteMetadata {
 	runtimeConfiguration: RuntimeConfiguration;
 	originalBlueprint: BlueprintV1;
 	originalBlueprintSource: BlueprintSource;
+
+	/**
+	 * Optional remote CouchDB server for cross-device sync.
+	 * Only used when storage === 'couchbase'.
+	 */
+	couchdb?: CouchDBConfig;
 }
 
 export const { setOPFSSitesLoadingState } = sitesSlice.actions;

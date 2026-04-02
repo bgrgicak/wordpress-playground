@@ -23,6 +23,7 @@ export function ActiveSiteSettingsForm({
 			);
 		case 'opfs':
 		case 'local-fs':
+		case 'couchbase':
 			return (
 				<StoredSiteSettingsForm
 					siteSlug={activeSite.slug}

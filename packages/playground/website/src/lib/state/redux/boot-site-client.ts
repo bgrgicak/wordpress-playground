@@ -39,6 +39,7 @@ import {
 	findDownloadErrorInCauseChain,
 } from './error-utils';
 import { PHPMYADMIN_INSTALL_PATH } from '@wp-playground/tools';
+import { setupCouchbaseSync } from '@wp-playground/couchbase-sync';
 
 export function bootSiteClient(
 	siteSlug: string,
@@ -280,6 +281,23 @@ export function bootSiteClient(
 				opfsMountDescriptor: mountDescriptor,
 			})
 		);
+
+		// For Couchbase-stored sites, set up the sync bridge after
+		// boot. On return visits, restoreOnBoot replays all
+		// persisted Couchbase documents into the fresh WASM SQLite.
+		if (site.metadata.storage === 'couchbase') {
+			try {
+				await setupCouchbaseSync(playground!, {
+					database: { name: `wp-playground-${siteSlug}` },
+					restoreOnBoot: true,
+				});
+			} catch (e) {
+				logger.error(
+					'[CouchbaseSync] Failed to restore from Couchbase:',
+					e
+				);
+			}
+		}
 
 		(playground as PlaygroundClient).onNavigation((url) => {
 			dispatch(

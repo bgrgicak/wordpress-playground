@@ -22,7 +22,10 @@ import type { SiteStorageType } from '../../lib/state/redux/slice-sites';
 import { logger } from '@php-wasm/logger';
 import { isOpfsAvailable } from '../../lib/state/opfs/opfs-site-storage';
 
-type StorageOption = Extract<SiteStorageType, 'opfs' | 'local-fs'>;
+type StorageOption = Extract<
+	SiteStorageType,
+	'opfs' | 'local-fs' | 'couchbase'
+>;
 
 const helpTextStyle: CSSProperties = {
 	color: '#757575',
@@ -156,6 +159,7 @@ export function SaveSiteModal() {
 		if (storage === 'opfs' && !isOpfsAvailable) {
 			return;
 		}
+		// Couchbase is always available (uses IndexedDB)
 		setSelectedStorage(storage);
 		setSubmitError(null);
 		if (storage !== 'local-fs') {
@@ -254,6 +258,8 @@ export function SaveSiteModal() {
 					trimmedName,
 					directoryHandle
 				);
+			} else if (selectedStorage === 'couchbase') {
+				await sitesAPI.saveToCouchbase(trimmedName);
 			} else {
 				await sitesAPI.saveInBrowser(trimmedName);
 			}
@@ -269,7 +275,8 @@ export function SaveSiteModal() {
 	const trimmedName = name.trim();
 	const selectionIsAvailable =
 		(selectedStorage === 'opfs' && isOpfsAvailable) ||
-		(selectedStorage === 'local-fs' && localIsAvailable);
+		(selectedStorage === 'local-fs' && localIsAvailable) ||
+		selectedStorage === 'couchbase';
 	const hasDirectoryAccess =
 		selectedStorage === 'local-fs'
 			? !!directoryHandle && directoryPermission === 'granted'
@@ -332,6 +339,10 @@ export function SaveSiteModal() {
 								'Save to a local directory' +
 								(!localIsAvailable ? ' (not available)' : ''),
 							value: 'local-fs',
+						},
+						{
+							label: 'Save to Couchbase (syncs across devices)',
+							value: 'couchbase',
 						},
 					]}
 					onChange={(value) => chooseStorage(value as StorageOption)}

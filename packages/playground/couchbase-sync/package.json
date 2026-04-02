@@ -1,0 +1,28 @@
+{
+	"name": "@wp-playground/couchbase-sync",
+	"version": "0.0.1",
+	"description": "Sync WordPress Playground SQLite data with Couchbase Lite for browser-based replication.",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/WordPress/wordpress-playground"
+	},
+	"homepage": "https://developer.wordpress.org/playground",
+	"author": "The WordPress contributors",
+	"exports": {
+		".": {
+			"import": "./index.js",
+			"require": "./index.cjs"
+		},
+		"./package.json": "./package.json"
+	},
+	"publishConfig": {
+		"access": "public",
+		"directory": "../../../dist/packages/playground/couchbase-sync"
+	},
+	"license": "GPL-2.0-or-later",
+	"type": "module",
+	"private": true,
+	"dependencies": {
+		"@couchbase/lite-js": "^1.0.0"
+	}
+}

@@ -51,8 +51,15 @@ export interface PlaygroundSitesAPI {
 		name?: string,
 		localFsHandle?: FileSystemDirectoryHandle
 	): Promise<{ slug: string; storage: string }>;
+	saveToCouchbase(name?: string): Promise<{ slug: string; storage: string }>;
 	setPhpVersion(version: SupportedPHPVersion): Promise<void>;
 	setNetworking(enabled: boolean): Promise<void>;
+	setCouchDBConfig(config: {
+		url: string;
+		database: string;
+		username?: string;
+		password?: string;
+	}): Promise<void>;
 	delete(siteSlug: string): Promise<void>;
 	setActiveSite(siteSlug: string): Promise<void>;
 	createNewTemporarySite(
@@ -172,6 +179,27 @@ export function createSitesAPI(
 			return { slug: site.slug, storage };
 		},
 
+		async saveToCouchbase(name?: string) {
+			const site = getActiveSiteOrThrow();
+			if (site.metadata.storage !== 'none') {
+				return { slug: site.slug, storage: site.metadata.storage };
+			}
+			await dispatch(
+				persistTemporarySite(site.slug, 'couchbase', {
+					siteName: name,
+					skipRenameModal: true,
+				})
+			);
+			const updatedSite = selectSiteBySlug(getState(), site.slug);
+			const storage = updatedSite?.metadata.storage ?? 'none';
+			if (storage === 'none') {
+				throw new Error(
+					'Failed to save the site — the storage is still temporary after persist.'
+				);
+			}
+			return { slug: site.slug, storage };
+		},
+
 		async setPhpVersion(version: SupportedPHPVersion) {
 			const site = getActiveSiteOrThrow();
 			if (site.metadata.storage === 'none') {
@@ -207,6 +235,35 @@ export function createSitesAPI(
 							...site.metadata.runtimeConfiguration,
 							networking: enabled,
 						},
+					},
+				})
+			);
+		},
+
+		async setCouchDBConfig(config: {
+			url: string;
+			database: string;
+			username?: string;
+			password?: string;
+		}) {
+			const site = getActiveSiteOrThrow();
+			if (site.metadata.storage !== 'couchbase') {
+				throw new Error(
+					'CouchDB config is only available for Couchbase-stored sites.'
+				);
+			}
+			await dispatch(
+				updateSiteMetadata({
+					slug: site.slug,
+					changes: {
+						couchdb: config.url
+							? {
+									url: config.url,
+									database: config.database,
+									username: config.username,
+									password: config.password,
+								}
+							: undefined,
 					},
 				})
 			);
