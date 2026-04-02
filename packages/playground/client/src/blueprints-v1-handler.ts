@@ -71,7 +71,7 @@ export class BlueprintsV1Handler {
 		downloadProgress.finish();
 
 		collectPhpLogs(logger, playground);
-		onClientConnected?.(playground);
+		await onClientConnected?.(playground);
 
 		const reflection = await BlueprintReflection.create(blueprint);
 		if (reflection.getVersion() === 1) {

@@ -103,7 +103,7 @@ export class BlueprintsV2Handler {
 		downloadProgress.finish();
 
 		collectPhpLogs(logger, playground);
-		onClientConnected?.(playground);
+		await onClientConnected?.(playground);
 
 		// @TODO: Get the landing page from the Blueprint.
 		playground.goTo('/');

@@ -61,7 +61,7 @@ export interface StartPlaygroundOptions {
 	 * @param playground
 	 * @returns
 	 */
-	onClientConnected?: (playground: PlaygroundClient) => void;
+	onClientConnected?: (playground: PlaygroundClient) => void | Promise<void>;
 	/**
 	 * The SAPI name PHP will use.
 	 * @internal

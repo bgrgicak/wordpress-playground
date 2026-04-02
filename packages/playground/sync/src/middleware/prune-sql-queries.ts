@@ -30,6 +30,14 @@ const shouldSyncQuery = (entry: SQLJournalEntry) => {
 	const queryType = entry.query_type;
 	const tableName = entry.table_name?.toLowerCase();
 
+	// Never sync Playground-internal tables
+	if (
+		tableName === 'playground_sequence' ||
+		tableName === 'playground_variables'
+	) {
+		return false;
+	}
+
 	if (entry.subtype === 'replay-query') {
 		const query = entry.query.trim();
 		// Don't sync cron updates
@@ -37,6 +45,14 @@ const shouldSyncQuery = (entry: SQLJournalEntry) => {
 			queryType === 'UPDATE' &&
 			tableName === 'wp_options' &&
 			query.endsWith("`option_name` = 'cron'")
+		) {
+			return false;
+		}
+		// Don't sync transient operations (UPDATE/DELETE)
+		if (
+			tableName === 'wp_options' &&
+			(query.includes('_transient_') ||
+				query.includes('_site_transient_'))
 		) {
 			return false;
 		}
