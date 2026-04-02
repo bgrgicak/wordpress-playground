@@ -329,7 +329,10 @@ function playground_sync_replay_sql_journal($queries)
                 $columns = implode(', ', array_keys($query['row']));
                 $placeholders = ':' . implode(', :', array_keys($query['row']));
 
-                $stmt = $pdo->prepare("INSERT INTO $table_name ($columns) VALUES ($placeholders)");
+                // Use REPLACE INTO so restored rows overwrite any
+                // default WordPress data that was created during
+                // a fresh site boot.
+                $stmt = $pdo->prepare("REPLACE INTO $table_name ($columns) VALUES ($placeholders)");
                 $stmt->execute($query['row']);
             } else {
                 $wpdb->query($query['query']);

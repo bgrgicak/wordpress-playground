@@ -202,6 +202,31 @@ export class CouchbaseDatabase {
 		);
 	}
 
+	/**
+	 * Discovers all collection prefixes that exist in PouchDB by
+	 * scanning document IDs. This finds collections not in the
+	 * hardcoded WP_CORE_TABLES list (e.g. custom plugin tables).
+	 */
+	async discoverCollections(): Promise<string[]> {
+		const db = this.requireDb();
+		const result = await db.allDocs({ limit: 0, include_docs: false });
+
+		// Fetch all doc IDs (allDocs with limit:0 still returns
+		// total_rows but no rows — we need actual IDs)
+		const allResult = await db.allDocs({ include_docs: false });
+
+		const collections = new Set<string>();
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		for (const row of allResult.rows) {
+			const id: string = row.id;
+			const sep = id.indexOf('::');
+			if (sep !== -1) {
+				collections.add(id.slice(0, sep));
+			}
+		}
+		return Array.from(collections);
+	}
+
 	async saveFile(path: string, data: string): Promise<void> {
 		const db = this.requireDb();
 		const id = `${WP_FILES_COLLECTION}::${path}`;
