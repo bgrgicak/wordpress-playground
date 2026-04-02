@@ -138,6 +138,69 @@ describe('Restore timing: data available before first page', () => {
 	);
 });
 
+describe('Restore handles large WordPress data without stack overflow', () => {
+	it(
+		'restores a database with large serialized option values',
+		async () => {
+			// Reproduce the stack overflow in phpVars/bytesToBase64
+			// that occurs with real WordPress data. Options like
+			// active_plugins, widget_block, and theme_mods can be
+			// 50-100KB+ of serialized PHP arrays.
+			const siteA = await bootSite('http://large-data.test/');
+			await installSqlSyncMuPlugin(siteA);
+
+			// Create options with large serialized values
+			await siteA.run({
+				code: `<?php
+				require '/wordpress/wp-load.php';
+				// Simulate a large serialized option (100KB+)
+				$large_value = str_repeat('a', 120000);
+				update_option('large_test_option', $large_value);
+
+				// Simulate another large option with nested structure
+				$nested = [];
+				for ($i = 0; $i < 200; $i++) {
+					$nested["plugin_$i"] = str_repeat("x", 500);
+				}
+				update_option('large_nested_option', serialize($nested));
+			`,
+			});
+
+			const cbDb = new CouchbaseDatabase({
+				adapter: 'memory',
+				name: `large-data-test-${Date.now()}`,
+			});
+			await cbDb.open();
+			await snapshotSqlToPouchDB(siteA, cbDb);
+
+			// Restore into a fresh site — this is where the stack
+			// overflow used to occur in phpVars() → bytesToBase64()
+			const siteB = await bootSite('http://large-data-restore.test/');
+			await installSqlSyncMuPlugin(siteB);
+			await restoreFromCouchbase(siteB, cbDb);
+
+			// Verify the large values survived
+			const result = await siteB.run({
+				code: `<?php
+				require '/wordpress/wp-load.php';
+				$large = get_option('large_test_option');
+				$nested = unserialize(get_option('large_nested_option'));
+				echo json_encode([
+					'large_length' => strlen($large),
+					'nested_count' => count($nested),
+				]);
+			`,
+			});
+			const data = JSON.parse(new TextDecoder().decode(result.bytes));
+			expect(data.large_length).toBe(120000);
+			expect(data.nested_count).toBe(200);
+
+			await cbDb.close();
+		},
+		{ timeout: 120_000 }
+	);
+});
+
 describe('Background operations must not corrupt PouchDB', () => {
 	it(
 		'transient cleanup queries do not delete real data from PouchDB',
