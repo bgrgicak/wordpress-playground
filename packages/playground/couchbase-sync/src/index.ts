@@ -41,3 +41,10 @@ export {
 	couchbaseFileChangeToFsOp,
 	isFileChange,
 } from './lib/couchbase-to-filesystem';
+
+export {
+	snapshotSqlToPouchDB,
+	snapshotFilesToPouchDB,
+} from './lib/snapshot-to-pouchdb';
+
+export { getOrCreateOffset, getMaxSyncedIds } from './lib/autoincrement-offset';

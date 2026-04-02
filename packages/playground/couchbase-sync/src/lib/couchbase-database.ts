@@ -1,6 +1,18 @@
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const PouchDB = require('pouchdb');
-
+// Dynamic import wrapper — resolved at runtime to avoid Vite/Rollup
+// issues with PouchDB's module format during static analysis.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let PouchDB: any;
+const pouchdbReady = (async () => {
+	try {
+		// Browser: use pouchdb-browser (no Node.js builtins)
+		const mod = await import('pouchdb-browser');
+		PouchDB = mod.default || mod;
+	} catch {
+		// Node.js (tests): fall back to pouchdb
+		const mod = await import('pouchdb');
+		PouchDB = mod.default || mod;
+	}
+})();
 import type {
 	CouchbaseSaveOp,
 	CouchbaseUpdateOp,
@@ -67,6 +79,7 @@ export class CouchbaseDatabase {
 	}
 
 	async open(): Promise<void> {
+		await pouchdbReady;
 		const tablePrefix = this.config.tablePrefix ?? 'wp_';
 		for (const table of WP_CORE_TABLES) {
 			const name = table.startsWith('wp_')

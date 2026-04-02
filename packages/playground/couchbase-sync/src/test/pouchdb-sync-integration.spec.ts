@@ -33,8 +33,9 @@ function toPouchDoc(doc: {
 	docId: string;
 	body: Record<string, unknown>;
 }) {
+	// docId already contains the collection prefix (e.g. "wp_posts::42")
 	return {
-		_id: `${doc.collection}::${doc.docId}`,
+		_id: doc.docId,
 		...doc.body,
 	};
 }

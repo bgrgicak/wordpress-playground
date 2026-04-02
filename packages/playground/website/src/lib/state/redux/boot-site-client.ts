@@ -306,7 +306,7 @@ export function bootSiteClient(
 						: undefined,
 				});
 				// Reload so WordPress picks up restored data
-				await playground!.goTo('/');
+				await (playground as PlaygroundClient).goTo('/');
 			} catch (e) {
 				logger.error('[CouchbaseSync] Failed to set up sync:', e);
 			}

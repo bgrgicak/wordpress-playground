@@ -14,11 +14,22 @@ export interface SyncOptions {
 	autoincrementOffset: number;
 	transport: PlaygroundSyncTransport;
 	middlewares?: SyncMiddleware[];
+	/**
+	 * Known max autoincrement IDs from synced peers. Keyed by
+	 * table name. The local sequence will start above these to
+	 * avoid collisions with already-synced data.
+	 */
+	knownIds?: Record<string, number>;
 }
 
 export async function setupPlaygroundSync(
 	playground: PlaygroundClient,
-	{ autoincrementOffset, transport, middlewares = [] }: SyncOptions
+	{
+		autoincrementOffset,
+		transport,
+		middlewares = [],
+		knownIds = {},
+	}: SyncOptions
 ) {
 	middlewares = [
 		pruneSQLQueriesMiddleware(),
@@ -28,7 +39,11 @@ export async function setupPlaygroundSync(
 	];
 
 	await installSqlSyncMuPlugin(playground);
-	await overrideAutoincrementSequences(playground, autoincrementOffset);
+	await overrideAutoincrementSequences(
+		playground,
+		autoincrementOffset,
+		knownIds
+	);
 
 	transport.onChangesReceived(async (changes) => {
 		for (const middleware of middlewares) {

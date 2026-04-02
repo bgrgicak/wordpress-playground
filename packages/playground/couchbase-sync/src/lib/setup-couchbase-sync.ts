@@ -10,6 +10,11 @@ import {
 	restoreFromCouchbase,
 	hasCouchbaseData,
 } from './restore-from-couchbase';
+import {
+	snapshotSqlToPouchDB,
+	snapshotFilesToPouchDB,
+} from './snapshot-to-pouchdb';
+import { getOrCreateOffset, getMaxSyncedIds } from './autoincrement-offset';
 
 export interface CouchbaseSyncOptions {
 	/**
@@ -21,7 +26,7 @@ export interface CouchbaseSyncOptions {
 	};
 
 	/**
-	 * Whether to restore state from the persisted Couchbase data
+	 * Whether to restore state from the persisted PouchDB data
 	 * on boot. When true, all previously synced rows and files are
 	 * replayed into the WASM instance before ongoing sync starts.
 	 *
@@ -37,105 +42,98 @@ export interface CouchbaseSyncOptions {
 	autoincrementOffset?: number;
 
 	/**
-	 * Optional remote CouchDB / Sync Gateway configuration.
-	 * When provided, the local Couchbase Lite database will
-	 * replicate with the remote server, enabling multi-device
-	 * collaboration.
+	 * Optional remote CouchDB / PouchDB Server configuration.
+	 * When provided, the local PouchDB database will replicate
+	 * with the remote server, enabling multi-device collaboration.
 	 */
 	remote?: CouchbaseReplicatorConfig;
 }
 
 export interface CouchbaseSyncHandle {
-	/**
-	 * The local Couchbase Lite database instance. Useful for
-	 * inspecting stored data or running queries.
-	 */
 	database: CouchbaseDatabase;
-
-	/**
-	 * The transport bridging the sync pipeline to Couchbase.
-	 */
 	transport: CouchbaseSyncTransport;
-
-	/**
-	 * The remote replicator, if configured.
-	 */
 	replicator: CouchbaseReplicatorManager | null;
-
-	/**
-	 * Stop all sync activity (local journaling + remote
-	 * replication).
-	 */
 	stop: () => void;
 }
 
 /**
  * Sets up real-time, row-level sync between a WordPress Playground
- * instance and Couchbase Lite. Each WordPress table maps to a
- * Couchbase collection, and each row maps to a document. Filesystem
- * files (wp-content) are stored in a dedicated wp_files collection.
+ * instance and PouchDB.
+ *
+ * ## First save vs. return visit
+ *
+ * On **first save** (no existing data in PouchDB):
+ *   1. Snapshots ALL existing database rows into PouchDB
+ *   2. Snapshots ALL wp-content files into PouchDB
+ *   3. Sets up ongoing journaling for future changes
+ *
+ * On **return visit** (existing data in PouchDB):
+ *   1. Restores all database rows from PouchDB → WASM SQLite
+ *   2. Restores all wp-content files from PouchDB → WASM filesystem
+ *   3. Sets up ongoing journaling for future changes
  *
  * ## Architecture
  *
  * ```
  * WordPress (WASM)
- *   ↕ SQL journal (INSERT/UPDATE/DELETE captured by mu-plugin)
- *   ↕ FS journal (file changes captured by Emscripten hooks)
- *       ↓
- * Sync Pipeline (middleware: prune, URL-marshall, hydrate)
+ *   ↕ SQL journal + FS journal
  *       ↓
  * CouchbaseSyncTransport
- *   ↕ SQL entries ↔ Couchbase document ops
- *   ↕ FS ops ↔ Couchbase file documents
+ *   ↕ row-level document operations
  *       ↓
- * Couchbase Lite (IndexedDB) — local persistence
+ * PouchDB (IndexedDB) — local persistence
  *       ↓
- * CouchbaseReplicator — remote sync (optional)
- *       ↓
- * CouchDB / Sync Gateway — collaboration server
+ * CouchDB replication — remote sync (optional)
  * ```
- *
- * ## Conflict Resolution
- *
- * - **Database rows**: Last-write-wins at the document level.
- *   Each row is a separate document, so concurrent edits to
- *   different rows never conflict. Same-row conflicts are
- *   resolved by accepting the remote version (configurable).
- *
- * - **Files**: Last-write-wins. Files are binary so merging
- *   isn't practical. The most recent write wins.
  */
 export async function setupCouchbaseSync(
 	playground: PlaygroundClient,
 	options: CouchbaseSyncOptions
 ): Promise<CouchbaseSyncHandle> {
-	// 1. Open the local Couchbase Lite database
+	// 1. Open the local PouchDB database
 	const cbDb = new CouchbaseDatabase({
 		name: options.database.name,
 		tablePrefix: options.database.tablePrefix,
 	});
 	await cbDb.open();
 
-	// 2. Restore persisted data if this is a return visit
-	if (options.restoreOnBoot !== false) {
-		const hasData = await hasCouchbaseData(cbDb);
-		if (hasData) {
-			const { sqlCount, fileCount } = await restoreFromCouchbase(
-				playground,
-				cbDb
-			);
-			// eslint-disable-next-line no-console
-			console.log(
-				`[CouchbaseSync] Restored ${sqlCount} SQL entries and ${fileCount} files.`
-			);
-		}
+	const hasData = await hasCouchbaseData(cbDb);
+
+	if (options.restoreOnBoot !== false && hasData) {
+		// 2a. Return visit: restore from PouchDB
+		const { sqlCount, fileCount } = await restoreFromCouchbase(
+			playground,
+			cbDb
+		);
+		// eslint-disable-next-line no-console
+		console.log(
+			`[CouchbaseSync] Restored ${sqlCount} SQL entries and ${fileCount} files.`
+		);
+	} else if (!hasData) {
+		// 2b. First save: snapshot the full current state into PouchDB
+		const [sqlCount, fileCount] = await Promise.all([
+			snapshotSqlToPouchDB(playground, cbDb),
+			snapshotFilesToPouchDB(playground, cbDb),
+		]);
+		// eslint-disable-next-line no-console
+		console.log(
+			`[CouchbaseSync] Initial snapshot: ${sqlCount} rows, ${fileCount} files.`
+		);
 	}
 
-	// 3. Set up the real-time sync pipeline
+	// 3. Set up the real-time sync pipeline for ongoing changes
+	//    Use a random large offset per site to avoid ID collisions,
+	//    and pass known max IDs from synced data so the local
+	//    sequence starts above any existing remote IDs.
+	const offset =
+		options.autoincrementOffset ?? (await getOrCreateOffset(cbDb));
+	const knownIds = await getMaxSyncedIds(cbDb);
+
 	const transport = new CouchbaseSyncTransport(cbDb);
 	await setupPlaygroundSync(playground, {
-		autoincrementOffset: options.autoincrementOffset ?? 1,
+		autoincrementOffset: offset,
 		transport,
+		knownIds,
 	});
 
 	// 4. Optionally start remote replication

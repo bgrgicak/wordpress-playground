@@ -1,6 +1,14 @@
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const PouchDB = require('pouchdb');
-
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let PouchDB: any;
+const pouchdbReady = (async () => {
+	try {
+		const mod = await import('pouchdb-browser');
+		PouchDB = mod.default || mod;
+	} catch {
+		const mod = await import('pouchdb');
+		PouchDB = mod.default || mod;
+	}
+})();
 import type { CouchbaseDatabase } from './couchbase-database';
 
 export interface CouchbaseReplicatorConfig {
@@ -36,6 +44,7 @@ export class CouchbaseReplicatorManager {
 	}
 
 	async start(): Promise<void> {
+		await pouchdbReady;
 		const localDb = this.cbDb.getDatabase();
 		if (!localDb) {
 			throw new Error(
