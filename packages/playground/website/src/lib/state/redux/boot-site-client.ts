@@ -282,20 +282,33 @@ export function bootSiteClient(
 			})
 		);
 
-		// For Couchbase-stored sites, set up the sync bridge after
-		// boot. On return visits, restoreOnBoot replays all
-		// persisted Couchbase documents into the fresh WASM SQLite.
+		// For Couchbase-stored sites, set up the row-level sync
+		// pipeline. On return visits, restoreOnBoot replays all
+		// persisted Couchbase documents (DB rows + files) into
+		// the fresh WASM instance, then reloads the page.
 		if (site.metadata.storage === 'couchbase') {
 			try {
+				const couchbaseConfig = site.metadata.couchdb;
 				await setupCouchbaseSync(playground!, {
 					database: { name: `wp-playground-${siteSlug}` },
 					restoreOnBoot: true,
+					remote: couchbaseConfig?.url
+						? {
+								url: couchbaseConfig.url,
+								credentials: couchbaseConfig.username
+									? {
+											username: couchbaseConfig.username,
+											password:
+												couchbaseConfig.password ?? '',
+										}
+									: undefined,
+							}
+						: undefined,
 				});
+				// Reload so WordPress picks up restored data
+				await playground!.goTo('/');
 			} catch (e) {
-				logger.error(
-					'[CouchbaseSync] Failed to restore from Couchbase:',
-					e
-				);
+				logger.error('[CouchbaseSync] Failed to set up sync:', e);
 			}
 		}
 

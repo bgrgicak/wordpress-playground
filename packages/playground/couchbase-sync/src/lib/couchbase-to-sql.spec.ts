@@ -9,8 +9,8 @@ describe('couchbaseChangeToSqlJournalEntry', () => {
 			docId: 'wp_posts::42',
 			deleted: false,
 			body: {
-				_table: 'wp_posts',
-				_pk_column: 'ID',
+				meta_table: 'wp_posts',
+				meta_pk_column: 'ID',
 				ID: 42,
 				post_title: 'Hello World',
 				post_status: 'publish',
@@ -35,8 +35,8 @@ describe('couchbaseChangeToSqlJournalEntry', () => {
 			docId: 'wp_posts::42',
 			deleted: true,
 			body: {
-				_table: 'wp_posts',
-				_pk_column: 'ID',
+				meta_table: 'wp_posts',
+				meta_pk_column: 'ID',
 			},
 		};
 
@@ -54,8 +54,8 @@ describe('couchbaseChangeToSqlJournalEntry', () => {
 			docId: 'wp_options::1',
 			deleted: false,
 			body: {
-				_table: 'wp_options',
-				_pk_column: 'option_id',
+				meta_table: 'wp_options',
+				meta_pk_column: 'option_id',
 				option_id: 1,
 				option_name: 'siteurl',
 				option_value: 'http://localhost',
@@ -64,8 +64,8 @@ describe('couchbaseChangeToSqlJournalEntry', () => {
 
 		const entry = couchbaseChangeToSqlJournalEntry(change);
 		expect(entry).not.toBeNull();
-		expect(entry!.query).not.toContain('_table');
-		expect(entry!.query).not.toContain('_pk_column');
+		expect(entry!.query).not.toContain('meta_table');
+		expect(entry!.query).not.toContain('meta_pk_column');
 		expect(entry!.query).toContain('`option_id`');
 		expect(entry!.query).toContain('`option_name`');
 	});
@@ -100,8 +100,8 @@ describe('couchbaseChangeToSqlJournalEntry', () => {
 			docId: 'wp_postmeta::10',
 			deleted: false,
 			body: {
-				_table: 'wp_postmeta',
-				_pk_column: 'meta_id',
+				meta_table: 'wp_postmeta',
+				meta_pk_column: 'meta_id',
 				meta_id: 10,
 				post_id: 42,
 				meta_key: '_edit_lock',
@@ -120,8 +120,8 @@ describe('couchbaseChangeToSqlJournalEntry', () => {
 			docId: 'wp_posts::1',
 			deleted: false,
 			body: {
-				_table: 'wp_posts',
-				_pk_column: 'ID',
+				meta_table: 'wp_posts',
+				meta_pk_column: 'ID',
 				ID: 1,
 				post_title: "It's a test",
 			},

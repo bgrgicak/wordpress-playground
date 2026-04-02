@@ -23,6 +23,6 @@
 	"type": "module",
 	"private": true,
 	"dependencies": {
-		"@couchbase/lite-js": "^1.0.0"
+		"pouchdb": "^9.0.0"
 	}
 }

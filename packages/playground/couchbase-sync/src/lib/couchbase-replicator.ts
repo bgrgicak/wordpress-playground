@@ -1,29 +1,32 @@
-import { Replicator } from '@couchbase/lite-js';
-import type {
-	Credentials,
-	ReplicatorConfig,
-	ReplicatorCollectionConfig,
-} from '@couchbase/lite-js';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const PouchDB = require('pouchdb');
+
 import type { CouchbaseDatabase } from './couchbase-database';
 
 export interface CouchbaseReplicatorConfig {
+	/** Remote CouchDB/PouchDB Server URL */
 	url: string;
-	credentials?: Credentials;
+	credentials?: {
+		username: string;
+		password: string;
+	};
 	continuous?: boolean;
-	collections?: string[];
 	direction?: 'push' | 'pull' | 'pushAndPull';
 }
 
 /**
- * Wraps the Couchbase Lite JS Replicator to sync the local
- * Couchbase Lite database with a remote Couchbase Sync Gateway.
+ * Manages PouchDB replication between the local database and a
+ * remote CouchDB server. Uses the CouchDB replication protocol,
+ * which supports:
  *
- * This enables multi-device sync: SQLite changes flow into the
- * local Couchbase Lite database, which then replicates to the
- * Sync Gateway, and from there to other devices.
+ * - Continuous (live) or one-shot sync
+ * - Push, pull, or bidirectional
+ * - Automatic conflict detection
+ * - Offline-first with automatic retry
  */
 export class CouchbaseReplicatorManager {
-	private replicator: Replicator | null = null;
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	private replication: any = null;
 	private cbDb: CouchbaseDatabase;
 	private config: CouchbaseReplicatorConfig;
 
@@ -33,8 +36,8 @@ export class CouchbaseReplicatorManager {
 	}
 
 	async start(): Promise<void> {
-		const db = this.cbDb.getDatabase();
-		if (!db) {
+		const localDb = this.cbDb.getDatabase();
+		if (!localDb) {
 			throw new Error(
 				'CouchbaseDatabase must be open before starting replication.'
 			);
@@ -43,75 +46,43 @@ export class CouchbaseReplicatorManager {
 		const continuous = this.config.continuous ?? true;
 		const direction = this.config.direction ?? 'pushAndPull';
 
-		const collectionNames =
-			this.config.collections ?? this.cbDb.getCollectionNames();
-		const replicatorCollections: Record<
-			string,
-			ReplicatorCollectionConfig
-		> = {};
-
-		for (const name of collectionNames) {
-			const collConfig: ReplicatorCollectionConfig = {};
-			if (direction === 'push' || direction === 'pushAndPull') {
-				collConfig.push = { continuous };
-			}
-			if (direction === 'pull' || direction === 'pushAndPull') {
-				collConfig.pull = {
-					continuous,
-					conflictResolver: async (local, remote) => {
-						// Default: last write wins
-						if (!remote) {
-							return local;
-						}
-						return remote;
-					},
-				};
-			}
-			replicatorCollections[name] = collConfig;
-		}
-
-		const replicatorConfig: ReplicatorConfig = {
-			database: db,
-			url: this.config.url,
-			collections: replicatorCollections,
-		};
-
+		// Build the remote URL with optional auth
+		let remoteUrl = this.config.url;
 		if (this.config.credentials) {
-			replicatorConfig.credentials = this.config.credentials;
+			const { username, password } = this.config.credentials;
+			const url = new URL(remoteUrl);
+			url.username = username;
+			url.password = password;
+			remoteUrl = url.toString();
 		}
 
-		this.replicator = new Replicator(replicatorConfig);
+		const remoteDb = new PouchDB(remoteUrl);
+		const opts = { live: continuous, retry: continuous };
 
-		this.replicator.onStatusChange = (status) => {
-			if (status.error) {
-				// Log replication errors but don't throw since
-				// the replicator will retry automatically in
-				// continuous mode.
-				// eslint-disable-next-line no-console
-				console.error(
-					'[CouchbaseSync] Replication error:',
-					status.error
-				);
-			}
-		};
+		if (direction === 'push') {
+			this.replication = localDb.replicate.to(remoteDb, opts);
+		} else if (direction === 'pull') {
+			this.replication = localDb.replicate.from(remoteDb, opts);
+		} else {
+			this.replication = localDb.sync(remoteDb, opts);
+		}
 
-		// Start the replicator - this returns a promise that
-		// resolves when the replicator stops (for one-shot)
-		// or runs indefinitely (for continuous)
-		this.replicator.run().catch((error) => {
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		this.replication.on('error', (error: any) => {
 			// eslint-disable-next-line no-console
-			console.error('[CouchbaseSync] Replicator failed:', error);
+			console.error('[CouchbaseSync] Replication error:', error);
 		});
 	}
 
 	stop(): void {
-		if (this.replicator) {
-			this.replicator.stop();
-			this.replicator = null;
+		if (this.replication) {
+			this.replication.cancel();
+			this.replication = null;
 		}
 	}
 
-	getReplicator(): Replicator | null {
-		return this.replicator;
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	getReplicator(): any {
+		return this.replication;
 	}
 }

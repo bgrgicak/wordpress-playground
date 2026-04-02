@@ -5,10 +5,22 @@ export {
 } from './lib/setup-couchbase-sync';
 
 export {
-	snapshotSqliteToIndexedDB,
-	restoreSqliteFromIndexedDB,
-	hasSqliteSnapshot,
-} from './lib/sqlite-file-sync';
+	CouchbaseDatabase,
+	WP_FILES_COLLECTION,
+	type CouchbaseDatabaseConfig,
+} from './lib/couchbase-database';
+
+export { CouchbaseSyncTransport } from './lib/couchbase-transport';
+
+export {
+	CouchbaseReplicatorManager,
+	type CouchbaseReplicatorConfig,
+} from './lib/couchbase-replicator';
+
+export {
+	restoreFromCouchbase,
+	hasCouchbaseData,
+} from './lib/restore-from-couchbase';
 
 export {
 	sqlJournalEntryToCouchbaseOps,
@@ -22,3 +34,10 @@ export {
 	couchbaseChangeToSqlJournalEntry,
 	type CouchbaseDocChange,
 } from './lib/couchbase-to-sql';
+
+export { applyFsOpsToCouchbase } from './lib/filesystem-to-couchbase';
+
+export {
+	couchbaseFileChangeToFsOp,
+	isFileChange,
+} from './lib/couchbase-to-filesystem';

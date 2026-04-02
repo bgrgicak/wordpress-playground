@@ -63,7 +63,7 @@ describe('Couchbase Sync E2E - SQLite round-trip', () => {
 			expect(saveOp.type).toBe('save');
 			expect(saveOp.collection).toBe('wp_posts');
 			expect(saveOp.docId).toMatch(/^wp_posts::\d+$/);
-			expect(saveOp.body._table).toBe('wp_posts');
+			expect(saveOp.body.meta_table).toBe('wp_posts');
 
 			// The body should contain the post data
 			if (postInsert!.subtype === 'reconstruct-insert') {
@@ -324,8 +324,8 @@ describe('Couchbase Sync E2E - SQLite round-trip', () => {
 				docId: 'wp_posts::99',
 				deleted: true,
 				body: {
-					_table: 'wp_posts',
-					_pk_column: 'ID',
+					meta_table: 'wp_posts',
+					meta_pk_column: 'ID',
 				},
 			};
 

@@ -125,9 +125,9 @@ export function persistTemporarySite(
 		}
 
 		if (storageType === 'couchbase') {
-			// Couchbase sync: use the couchbase-sync package to
-			// persist all SQL data into Couchbase Lite (IndexedDB).
-			// No OPFS mount needed - data lives in Couchbase.
+			// Couchbase sync: set up the row-level sync pipeline.
+			// This captures current WordPress state (DB rows + files)
+			// into Couchbase Lite (IndexedDB) and starts ongoing sync.
 			dispatch(
 				updateClientInfo({
 					siteSlug,

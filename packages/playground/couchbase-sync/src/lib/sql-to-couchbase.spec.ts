@@ -27,8 +27,8 @@ describe('sqlJournalEntryToCouchbaseOps', () => {
 				collection: 'wp_posts',
 				docId: 'wp_posts::42',
 				body: {
-					_table: 'wp_posts',
-					_pk_column: 'ID',
+					meta_table: 'wp_posts',
+					meta_pk_column: 'ID',
 					ID: 42,
 					post_title: 'Hello World',
 					post_status: 'publish',

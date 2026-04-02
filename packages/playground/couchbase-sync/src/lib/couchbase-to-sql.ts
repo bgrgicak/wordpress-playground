@@ -27,8 +27,8 @@ export function couchbaseChangeToSqlJournalEntry(
 		return null;
 	}
 
-	const tableName = (change.body?._table as string) ?? change.collection;
-	const pkColumn = (change.body?._pk_column as string) || 'id';
+	const tableName = (change.body?.meta_table as string) ?? change.collection;
+	const pkColumn = (change.body?.meta_pk_column as string) || 'id';
 
 	if (change.deleted) {
 		const pkValue = extractPkFromDocId(change.docId);
@@ -50,9 +50,20 @@ export function couchbaseChangeToSqlJournalEntry(
 	const columns: string[] = [];
 	const values: string[] = [];
 
+	const SKIP_FIELDS = new Set([
+		'meta_table',
+		'meta_pk_column',
+		'meta_path',
+		'collection',
+		'docId',
+		'_id',
+		'_rev',
+		'_deleted',
+		'_attachments',
+	]);
 	for (const [key, value] of Object.entries(body)) {
-		// Skip internal metadata fields
-		if (key.startsWith('_')) {
+		// Skip internal metadata and PouchDB fields
+		if (SKIP_FIELDS.has(key) || key.startsWith('_')) {
 			continue;
 		}
 		columns.push(`\`${escSql(key)}\``);

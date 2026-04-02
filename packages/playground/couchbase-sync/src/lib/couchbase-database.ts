@@ -1,5 +1,6 @@
-import { Database, meta, LastWriteWins, DocID } from '@couchbase/lite-js';
-import type { CollectionChange } from '@couchbase/lite-js';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const PouchDB = require('pouchdb');
+
 import type {
 	CouchbaseSaveOp,
 	CouchbaseUpdateOp,
@@ -9,9 +10,8 @@ import type {
 import type { CouchbaseDocChange } from './couchbase-to-sql';
 
 /**
- * Known WordPress core tables that will be pre-created as
- * Couchbase collections. Additional collections are created
- * dynamically as new tables appear in SQL journal entries.
+ * Known WordPress core tables. Used for listing purposes —
+ * PouchDB doesn't need upfront schema definitions.
  */
 const WP_CORE_TABLES = [
 	'wp_posts',
@@ -27,6 +27,12 @@ const WP_CORE_TABLES = [
 	'wp_links',
 ];
 
+/**
+ * Document ID prefix for filesystem entries. Each file is stored
+ * as a document with `wp_files::{relativePath}` as its _id.
+ */
+export const WP_FILES_COLLECTION = 'wp_files';
+
 export interface CouchbaseDatabaseConfig {
 	name: string;
 	tablePrefix?: string;
@@ -34,24 +40,27 @@ export interface CouchbaseDatabaseConfig {
 
 type ChangeCallback = (change: CouchbaseDocChange) => void;
 
-// We use dynamic collection names derived from WordPress tables,
-// so we build the config object at runtime. Couchbase Lite JS's
-// types are generic and schema-driven, but our usage is dynamic.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type AnyDatabase = Database<any>;
-
 /**
- * Manages a Couchbase Lite database that mirrors WordPress
- * SQLite data. Each WordPress table maps to a Couchbase
- * collection, and each row maps to a document.
+ * Manages a PouchDB database that mirrors WordPress data.
+ * Each WordPress table maps to a document ID prefix (virtual
+ * collection), and each row maps to a document.
+ *
+ * PouchDB provides:
+ * - IndexedDB storage in the browser (offline-first)
+ * - LevelDB storage in Node.js
+ * - Built-in CouchDB replication protocol
+ * - Document-level conflict resolution
  */
 export class CouchbaseDatabase {
-	private db: AnyDatabase | null = null;
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	private db: any = null;
 	private changeCallbacks: ChangeCallback[] = [];
 	private knownCollections: Set<string> = new Set();
-	private listeningCollections: Set<string> = new Set();
 	private config: CouchbaseDatabaseConfig;
 	private suppressChangeEvents = false;
+	private opened = false;
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	private changesListener: any = null;
 
 	constructor(config: CouchbaseDatabaseConfig) {
 		this.config = config;
@@ -59,41 +68,57 @@ export class CouchbaseDatabase {
 
 	async open(): Promise<void> {
 		const tablePrefix = this.config.tablePrefix ?? 'wp_';
-		const collections: Record<string, object> = {};
-
 		for (const table of WP_CORE_TABLES) {
 			const name = table.startsWith('wp_')
 				? tablePrefix + table.slice(3)
 				: table;
-			collections[name] = {};
 			this.knownCollections.add(name);
 		}
+		this.knownCollections.add(WP_FILES_COLLECTION);
 
-		this.db = await Database.open({
-			name: this.config.name,
-			version: 1,
-			collections,
+		this.db = new PouchDB(this.config.name);
+		this.opened = true;
+
+		// Live change feed — routes changes to callbacks
+		this.changesListener = this.db
+			.changes({
+				live: true,
+				since: 'now',
+				include_docs: true,
+			})
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		} as any);
-
-		for (const collectionName of this.knownCollections) {
-			this.addCollectionChangeListener(collectionName);
-		}
+			.on('change', (change: any) => {
+				if (this.suppressChangeEvents) {
+					return;
+				}
+				const docChange = pouchChangeToCouchbaseChange(change);
+				if (docChange) {
+					for (const cb of this.changeCallbacks) {
+						cb(docChange);
+					}
+				}
+			});
 	}
 
 	async close(): Promise<void> {
+		if (this.changesListener) {
+			this.changesListener.cancel();
+			this.changesListener = null;
+		}
 		if (this.db) {
 			await this.db.close();
 			this.db = null;
 		}
+		this.opened = false;
 	}
 
-	getDatabase(): AnyDatabase | null {
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	getDatabase(): any {
 		return this.db;
 	}
 
 	isOpen(): boolean {
-		return this.db?.isOpen ?? false;
+		return this.opened;
 	}
 
 	onDocumentChange(callback: ChangeCallback): void {
@@ -125,56 +150,87 @@ export class CouchbaseDatabase {
 		collectionName: string
 	): Promise<CouchbaseDocChange[]> {
 		const db = this.requireDb();
-		const collection = db.getCollection(collectionName);
-		if (!collection) {
-			return [];
-		}
-
-		const changes: CouchbaseDocChange[] = [];
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		await collection.eachDocument((doc: any) => {
-			const docMeta = meta(doc);
-			const body: Record<string, unknown> = {};
-			for (const [key, value] of Object.entries(doc)) {
-				if (typeof key === 'string') {
-					body[key] = value;
-				}
-			}
-			changes.push({
-				collection: collectionName,
-				docId: docMeta.id as string,
-				deleted: false,
-				body,
-			});
-			return true;
+		const result = await db.allDocs({
+			startkey: `${collectionName}::`,
+			endkey: `${collectionName}::\ufff0`,
+			include_docs: true,
 		});
-		return changes;
+
+		return (
+			result.rows
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				.filter((row: any) => !row.doc._deleted)
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				.map((row: any) => {
+					const body = fromPouchBody(row.doc);
+					const collection = parseCollection(row.id);
+					return {
+						collection: collection ?? collectionName,
+						docId: row.id,
+						deleted: false,
+						body,
+					};
+				})
+		);
 	}
 
 	getCollectionNames(): string[] {
 		return Array.from(this.knownCollections);
 	}
 
+	getDataCollectionNames(): string[] {
+		return Array.from(this.knownCollections).filter(
+			(n) => n !== WP_FILES_COLLECTION
+		);
+	}
+
+	async saveFile(path: string, data: string): Promise<void> {
+		const db = this.requireDb();
+		const id = `${WP_FILES_COLLECTION}::${path}`;
+		const body = { meta_path: path, data };
+
+		this.suppressChangeEvents = true;
+		try {
+			await putDoc(db, id, body);
+		} finally {
+			this.suppressChangeEvents = false;
+		}
+	}
+
+	async deleteFile(path: string): Promise<void> {
+		const db = this.requireDb();
+		const id = `${WP_FILES_COLLECTION}::${path}`;
+
+		this.suppressChangeEvents = true;
+		try {
+			await removeDoc(db, id);
+		} finally {
+			this.suppressChangeEvents = false;
+		}
+	}
+
+	async getAllFiles(): Promise<Array<{ path: string; data: string }>> {
+		const db = this.requireDb();
+		const result = await db.allDocs({
+			startkey: `${WP_FILES_COLLECTION}::`,
+			endkey: `${WP_FILES_COLLECTION}::\ufff0`,
+			include_docs: true,
+		});
+
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		return result.rows.map((row: any) => ({
+			path:
+				(row.doc.meta_path as string) ??
+				row.id.slice(`${WP_FILES_COLLECTION}::`.length),
+			data: row.doc.data as string,
+		}));
+	}
+
 	private async applySave(op: CouchbaseSaveOp): Promise<void> {
 		const db = this.requireDb();
-		await this.ensureCollection(op.collection);
-		const collection = db.getCollection(op.collection);
-		if (!collection) {
-			return;
-		}
-
-		const docId = DocID(op.docId);
-		const existing = await collection.getDocument(docId);
-		if (existing) {
-			const docMeta = meta(existing);
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			docMeta.setBody(op.body as any);
-			await collection.save(existing, LastWriteWins);
-		} else {
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const doc = collection.createDocument(docId, op.body as any);
-			await collection.save(doc, LastWriteWins);
-		}
+		const id = op.docId;
+		this.ensureCollection(op.collection);
+		await putDoc(db, id, op.body);
 	}
 
 	private async applyUpdate(op: CouchbaseUpdateOp): Promise<void> {
@@ -182,19 +238,18 @@ export class CouchbaseDatabase {
 			return;
 		}
 		const db = this.requireDb();
-		await this.ensureCollection(op.collection);
-		const collection = db.getCollection(op.collection);
-		if (!collection) {
-			return;
-		}
+		this.ensureCollection(op.collection);
 
-		const docId = DocID(op.docId);
-		const existing = await collection.getDocument(docId);
-		if (existing) {
+		try {
+			const existing = await db.get(op.docId);
 			for (const [key, value] of Object.entries(op.fields)) {
-				(existing as Record<string, unknown>)[key] = value;
+				existing[key] = value;
 			}
-			await collection.save(existing, LastWriteWins);
+			await db.put(existing);
+		} catch (e: unknown) {
+			if ((e as { status?: number }).status !== 404) {
+				throw e;
+			}
 		}
 	}
 
@@ -203,101 +258,108 @@ export class CouchbaseDatabase {
 			return;
 		}
 		const db = this.requireDb();
-		await this.ensureCollection(op.collection);
-		const collection = db.getCollection(op.collection);
-		if (!collection) {
-			return;
-		}
-
-		const docId = DocID(op.docId);
-		const existing = await collection.getDocument(docId);
-		if (existing) {
-			await collection.delete(existing);
-		}
+		this.ensureCollection(op.collection);
+		await removeDoc(db, op.docId);
 	}
 
-	private async ensureCollection(name: string): Promise<void> {
-		if (this.knownCollections.has(name)) {
-			return;
-		}
-
+	private ensureCollection(name: string): void {
 		this.knownCollections.add(name);
-
-		if (this.db) {
-			await this.db.close();
-		}
-
-		const collections: Record<string, object> = {};
-		for (const collectionName of this.knownCollections) {
-			collections[collectionName] = {};
-		}
-
-		this.db = await Database.open({
-			name: this.config.name,
-			version: this.knownCollections.size,
-			collections,
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		} as any);
-
-		this.listeningCollections.clear();
-		for (const collectionName of this.knownCollections) {
-			this.addCollectionChangeListener(collectionName);
-		}
 	}
 
-	private addCollectionChangeListener(collectionName: string): void {
-		if (this.listeningCollections.has(collectionName)) {
-			return;
-		}
-		this.listeningCollections.add(collectionName);
-
-		const db = this.requireDb();
-		const collection = db.getCollection(collectionName);
-		if (!collection) {
-			return;
-		}
-
-		collection.addChangeListener(async (changes: CollectionChange) => {
-			if (this.suppressChangeEvents) {
-				return;
-			}
-
-			for (const [docIdStr, change] of changes) {
-				const docId = DocID(docIdStr as string);
-				let body: Record<string, unknown> | null = null;
-
-				if (!change.deleted) {
-					const doc = await collection.getDocument(docId);
-					if (doc) {
-						body = {};
-						for (const [key, value] of Object.entries(doc)) {
-							if (typeof key === 'string') {
-								body[key] = value;
-							}
-						}
-					}
-				}
-
-				const docChange: CouchbaseDocChange = {
-					collection: collectionName,
-					docId: docIdStr as string,
-					deleted: change.deleted ?? false,
-					body,
-				};
-
-				for (const cb of this.changeCallbacks) {
-					cb(docChange);
-				}
-			}
-		});
-	}
-
-	private requireDb(): AnyDatabase {
-		if (!this.db || !this.db.isOpen) {
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	private requireDb(): any {
+		if (!this.db || !this.opened) {
 			throw new Error(
 				'CouchbaseDatabase is not open. Call open() first.'
 			);
 		}
 		return this.db;
 	}
+}
+
+// ── PouchDB helpers ─────────────────────────────────────────
+
+/**
+ * Put a document, handling create vs update (fetching _rev).
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function putDoc(db: any, id: string, body: Record<string, unknown>) {
+	const doc: Record<string, unknown> = { _id: id, ...body };
+	try {
+		const existing = await db.get(id);
+		doc._rev = existing._rev;
+	} catch (e: unknown) {
+		if ((e as { status?: number }).status !== 404) {
+			throw e;
+		}
+	}
+	await db.put(doc);
+}
+
+/**
+ * Remove a document by ID, ignoring 404.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function removeDoc(db: any, id: string) {
+	try {
+		const existing = await db.get(id);
+		await db.remove(existing);
+	} catch (e: unknown) {
+		if ((e as { status?: number }).status !== 404) {
+			throw e;
+		}
+	}
+}
+
+/**
+ * Extracts the collection name from a PouchDB document _id.
+ * IDs follow the pattern "collection::docId".
+ */
+function parseCollection(id: string): string | null {
+	const idx = id.indexOf('::');
+	return idx === -1 ? null : id.slice(0, idx);
+}
+
+/**
+ * Converts a PouchDB change event to a CouchbaseDocChange.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function pouchChangeToCouchbaseChange(change: any): CouchbaseDocChange | null {
+	const id: string = change.id;
+	const collection = parseCollection(id);
+	if (!collection) {
+		return null;
+	}
+
+	if (change.deleted) {
+		return {
+			collection,
+			docId: id,
+			deleted: true,
+			body: null,
+		};
+	}
+
+	const body = change.doc ? fromPouchBody(change.doc) : null;
+	return {
+		collection,
+		docId: id,
+		deleted: false,
+		body,
+	};
+}
+
+/**
+ * Strips PouchDB internal fields (_id, _rev) from a document
+ * body for use in the Couchbase conversion layer.
+ */
+function fromPouchBody(doc: Record<string, unknown>): Record<string, unknown> {
+	const body: Record<string, unknown> = {};
+	for (const [key, value] of Object.entries(doc)) {
+		if (key === '_id' || key === '_rev') {
+			continue;
+		}
+		body[key] = value;
+	}
+	return body;
 }

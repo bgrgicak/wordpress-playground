@@ -1,8 +1,15 @@
 import type { PlaygroundClient } from '@wp-playground/remote';
+import { setupPlaygroundSync } from '@wp-playground/sync';
+import { CouchbaseDatabase } from './couchbase-database';
+import { CouchbaseSyncTransport } from './couchbase-transport';
 import {
-	snapshotSqliteToIndexedDB,
-	restoreSqliteFromIndexedDB,
-} from './sqlite-file-sync';
+	CouchbaseReplicatorManager,
+	type CouchbaseReplicatorConfig,
+} from './couchbase-replicator';
+import {
+	restoreFromCouchbase,
+	hasCouchbaseData,
+} from './restore-from-couchbase';
 
 export interface CouchbaseSyncOptions {
 	/**
@@ -10,129 +17,143 @@ export interface CouchbaseSyncOptions {
 	 */
 	database: {
 		name: string;
+		tablePrefix?: string;
 	};
 
 	/**
-	 * Whether to restore SQLite state from the persisted snapshot
-	 * on boot. When true, the SQLite database file stored in
-	 * IndexedDB is written back into the WASM filesystem before
-	 * WordPress queries run.
+	 * Whether to restore state from the persisted Couchbase data
+	 * on boot. When true, all previously synced rows and files are
+	 * replayed into the WASM instance before ongoing sync starts.
 	 *
 	 * Default: true.
 	 */
 	restoreOnBoot?: boolean;
 
 	/**
-	 * Interval in ms between automatic snapshots of the SQLite
-	 * database to IndexedDB. Set to 0 to disable periodic
-	 * snapshots (will only snapshot after PHP requests).
-	 *
-	 * Default: 5000ms.
+	 * Autoincrement offset for this client. Each collaborating
+	 * Playground instance must use a different offset to avoid
+	 * primary key collisions. Default: 1.
 	 */
-	snapshotIntervalMs?: number;
+	autoincrementOffset?: number;
+
+	/**
+	 * Optional remote CouchDB / Sync Gateway configuration.
+	 * When provided, the local Couchbase Lite database will
+	 * replicate with the remote server, enabling multi-device
+	 * collaboration.
+	 */
+	remote?: CouchbaseReplicatorConfig;
 }
 
 export interface CouchbaseSyncHandle {
 	/**
-	 * Force an immediate snapshot of the current SQLite state
-	 * to IndexedDB.
+	 * The local Couchbase Lite database instance. Useful for
+	 * inspecting stored data or running queries.
 	 */
-	snapshot: () => Promise<void>;
+	database: CouchbaseDatabase;
 
 	/**
-	 * Stop the sync (clears timers and event listeners).
+	 * The transport bridging the sync pipeline to Couchbase.
+	 */
+	transport: CouchbaseSyncTransport;
+
+	/**
+	 * The remote replicator, if configured.
+	 */
+	replicator: CouchbaseReplicatorManager | null;
+
+	/**
+	 * Stop all sync activity (local journaling + remote
+	 * replication).
 	 */
 	stop: () => void;
 }
 
 /**
- * Sets up persistence for WordPress Playground's SQLite database
- * using IndexedDB as the durable storage layer.
+ * Sets up real-time, row-level sync between a WordPress Playground
+ * instance and Couchbase Lite. Each WordPress table maps to a
+ * Couchbase collection, and each row maps to a document. Filesystem
+ * files (wp-content) are stored in a dedicated wp_files collection.
  *
- * ## How it works
- *
- * The WordPress database lives in an in-memory SQLite file inside
- * the Emscripten WASM filesystem. This is lost on page reload.
- *
- * This function:
- * 1. **On boot** (restoreOnBoot=true): reads the previous SQLite
- *    database file from IndexedDB and writes it into the WASM
- *    filesystem, so WordPress sees all its previous data.
- * 2. **After each PHP request**: snapshots the SQLite file back
- *    to IndexedDB, capturing any changes WordPress made.
- * 3. **Periodically**: takes a safety snapshot in case a long-
- *    running request is in progress when the user closes the tab.
- *
- * ## Data flow
+ * ## Architecture
  *
  * ```
- * Page load:
- *   IndexedDB → .ht.sqlite blob → WASM filesystem → WordPress
- *
- * After each request:
- *   WordPress → WASM filesystem → .ht.sqlite blob → IndexedDB
+ * WordPress (WASM)
+ *   ↕ SQL journal (INSERT/UPDATE/DELETE captured by mu-plugin)
+ *   ↕ FS journal (file changes captured by Emscripten hooks)
+ *       ↓
+ * Sync Pipeline (middleware: prune, URL-marshall, hydrate)
+ *       ↓
+ * CouchbaseSyncTransport
+ *   ↕ SQL entries ↔ Couchbase document ops
+ *   ↕ FS ops ↔ Couchbase file documents
+ *       ↓
+ * Couchbase Lite (IndexedDB) — local persistence
+ *       ↓
+ * CouchbaseReplicator — remote sync (optional)
+ *       ↓
+ * CouchDB / Sync Gateway — collaboration server
  * ```
+ *
+ * ## Conflict Resolution
+ *
+ * - **Database rows**: Last-write-wins at the document level.
+ *   Each row is a separate document, so concurrent edits to
+ *   different rows never conflict. Same-row conflicts are
+ *   resolved by accepting the remote version (configurable).
+ *
+ * - **Files**: Last-write-wins. Files are binary so merging
+ *   isn't practical. The most recent write wins.
  */
 export async function setupCouchbaseSync(
 	playground: PlaygroundClient,
 	options: CouchbaseSyncOptions
 ): Promise<CouchbaseSyncHandle> {
-	const dbName = options.database.name;
+	// 1. Open the local Couchbase Lite database
+	const cbDb = new CouchbaseDatabase({
+		name: options.database.name,
+		tablePrefix: options.database.tablePrefix,
+	});
+	await cbDb.open();
 
-	// 1. Restore from IndexedDB if requested
+	// 2. Restore persisted data if this is a return visit
 	if (options.restoreOnBoot !== false) {
-		const restored = await restoreSqliteFromIndexedDB(playground, dbName);
-		if (restored) {
+		const hasData = await hasCouchbaseData(cbDb);
+		if (hasData) {
+			const { sqlCount, fileCount } = await restoreFromCouchbase(
+				playground,
+				cbDb
+			);
 			// eslint-disable-next-line no-console
 			console.log(
-				'[CouchbaseSync] Restored SQLite database from IndexedDB.'
+				`[CouchbaseSync] Restored ${sqlCount} SQL entries and ${fileCount} files.`
 			);
 		}
 	}
 
-	// 2. Snapshot after every PHP request completes
-	let snapshotInProgress = false;
-	const doSnapshot = async () => {
-		if (snapshotInProgress) {
-			return;
-		}
-		snapshotInProgress = true;
-		try {
-			await snapshotSqliteToIndexedDB(playground, dbName);
-		} catch (error) {
-			// eslint-disable-next-line no-console
-			console.error('[CouchbaseSync] Snapshot failed:', error);
-		} finally {
-			snapshotInProgress = false;
-		}
-	};
+	// 3. Set up the real-time sync pipeline
+	const transport = new CouchbaseSyncTransport(cbDb);
+	await setupPlaygroundSync(playground, {
+		autoincrementOffset: options.autoincrementOffset ?? 1,
+		transport,
+	});
 
-	const onRequestEnd = () => {
-		doSnapshot();
-	};
-	playground.addEventListener('request.end', onRequestEnd);
-
-	// 3. Take the initial snapshot (captures the current state)
-	await doSnapshot();
-
-	// 4. Optional periodic safety snapshots
-	const intervalMs = options.snapshotIntervalMs ?? 5000;
-	let timer: ReturnType<typeof setInterval> | null = null;
-	if (intervalMs > 0) {
-		timer = setInterval(doSnapshot, intervalMs);
+	// 4. Optionally start remote replication
+	let replicator: CouchbaseReplicatorManager | null = null;
+	if (options.remote) {
+		replicator = new CouchbaseReplicatorManager(cbDb, options.remote);
+		await replicator.start();
 	}
 
 	return {
-		snapshot: doSnapshot,
+		database: cbDb,
+		transport,
+		replicator,
 		stop: () => {
-			if (timer) {
-				clearInterval(timer);
-				timer = null;
+			if (replicator) {
+				replicator.stop();
 			}
-			// Note: we can't remove the event listener since
-			// PlaygroundClient doesn't expose removeEventListener.
-			// The listener will be GC'd when the playground is
-			// disposed.
+			cbDb.close();
 		},
 	};
 }

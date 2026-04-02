@@ -56,8 +56,8 @@ function reconstructInsertToSaveOp(
 	const docId = `${tableName}::${pkValue}`;
 
 	const body: Record<string, unknown> = {
-		_table: tableName,
-		_pk_column: pkColumn,
+		meta_table: tableName,
+		meta_pk_column: pkColumn,
 	};
 	for (const [key, value] of Object.entries(entry.row)) {
 		body[key] = value;
@@ -119,8 +119,8 @@ function parseInsertQuery(
 	entry: Extract<SQLJournalEntry, { subtype: 'replay-query' }>
 ): CouchbaseSaveOp {
 	const body: Record<string, unknown> = {
-		_table: tableName,
-		_pk_column: entry.auto_increment_column,
+		meta_table: tableName,
+		meta_pk_column: entry.auto_increment_column,
 	};
 
 	// Try to parse INSERT INTO table (col1, col2) VALUES (val1, val2)
