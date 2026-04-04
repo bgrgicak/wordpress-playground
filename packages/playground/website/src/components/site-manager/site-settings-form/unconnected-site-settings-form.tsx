@@ -2,11 +2,12 @@ import type { SupportedPHPVersion } from '@php-wasm/universal';
 import { SupportedPHPVersionsList } from '@php-wasm/universal';
 import css from './style.module.css';
 import {
+	Button,
 	CheckboxControl,
 	SelectControl,
 	TextControl,
 } from '@wordpress/components';
-import { useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import classNames from 'classnames';
 import { __experimentalVStack as VStack } from '@wordpress/components';
@@ -78,6 +79,69 @@ export function UnconnectedSiteSettingsForm({
 		defaultValues: mergedDefaults,
 		values: mergedDefaults,
 	});
+
+	const [connectionStatus, setConnectionStatus] = useState<
+		'idle' | 'testing' | 'success' | 'error'
+	>('idle');
+	const [connectionMessage, setConnectionMessage] = useState('');
+
+	const testConnection = useCallback(async () => {
+		const url = getValues('couchdbUrl');
+		const db = getValues('couchdbDatabase');
+		if (!url) {
+			setConnectionStatus('error');
+			setConnectionMessage('Server URL is required.');
+			return;
+		}
+		if (!db) {
+			setConnectionStatus('error');
+			setConnectionMessage('Database name is required.');
+			return;
+		}
+		setConnectionStatus('testing');
+		setConnectionMessage('');
+		try {
+			const baseUrl = url.replace(/\/+$/, '');
+			const username = getValues('couchdbUsername');
+			const password = getValues('couchdbPassword');
+			const headers: Record<string, string> = {
+				'X-Playground-Bypass-SW': '1',
+			};
+			if (username) {
+				headers['Authorization'] =
+					'Basic ' + btoa(`${username}:${password || ''}`);
+			}
+			const res = await fetch(`${baseUrl}/${db}`, { headers });
+			if (res.ok) {
+				const data = await res.json();
+				const docCount = data.doc_count ?? '?';
+				setConnectionStatus('success');
+				setConnectionMessage(
+					`Connected. Database "${db}" has ${docCount} documents.`
+				);
+			} else if (res.status === 401 || res.status === 403) {
+				setConnectionStatus('error');
+				setConnectionMessage(
+					'Authentication failed. Check username and password.'
+				);
+			} else if (res.status === 404) {
+				setConnectionStatus('error');
+				setConnectionMessage(
+					`Database "${db}" not found. It will be created on first sync.`
+				);
+			} else {
+				setConnectionStatus('error');
+				setConnectionMessage(
+					`Server returned ${res.status}: ${res.statusText}`
+				);
+			}
+		} catch (e) {
+			setConnectionStatus('error');
+			setConnectionMessage(
+				`Connection failed: ${e instanceof Error ? e.message : 'Unknown error'}`
+			);
+		}
+	}, [getValues]);
 
 	const { supportedWPVersions, latestWPVersion } =
 		useSupportedWordPressVersions();
@@ -576,6 +640,35 @@ export function UnconnectedSiteSettingsForm({
 							/>
 						)}
 					/>
+					<Button
+						variant="secondary"
+						onClick={testConnection}
+						isBusy={connectionStatus === 'testing'}
+						disabled={connectionStatus === 'testing'}
+						style={{ alignSelf: 'flex-start' }}
+					>
+						{connectionStatus === 'testing'
+							? 'Testing...'
+							: 'Test Connection'}
+					</Button>
+					{connectionStatus !== 'idle' &&
+						connectionStatus !== 'testing' && (
+							<p
+								style={{
+									margin: 0,
+									fontSize: 12,
+									color:
+										connectionStatus === 'success'
+											? '#00a32a'
+											: '#d63638',
+								}}
+							>
+								{connectionStatus === 'success'
+									? '\u2713 '
+									: '\u2717 '}
+								{connectionMessage}
+							</p>
+						)}
 				</VStack>
 			)}
 			{footer}

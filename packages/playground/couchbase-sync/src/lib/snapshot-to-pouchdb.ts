@@ -359,6 +359,7 @@ export async function incrementalSnapshotSqlToPouchDB(
 							type: 'delete' as const,
 							collection: table,
 							docId: doc.docId,
+							query: '',
 						},
 					]);
 					cache.delete(doc.docId);
