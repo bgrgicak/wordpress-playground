@@ -15,6 +15,7 @@ export { CouchbaseSyncTransport } from './lib/couchbase-transport';
 export {
 	CouchbaseReplicatorManager,
 	type CouchbaseReplicatorConfig,
+	type ReplicationStatus,
 } from './lib/couchbase-replicator';
 
 export {
@@ -45,6 +46,11 @@ export {
 export {
 	snapshotSqlToPouchDB,
 	snapshotFilesToPouchDB,
+	incrementalSnapshotSqlToPouchDB,
 } from './lib/snapshot-to-pouchdb';
 
-export { getOrCreateOffset, getMaxSyncedIds } from './lib/autoincrement-offset';
+export {
+	getOrCreateOffset,
+	getSavedSequence,
+	saveSequence,
+} from './lib/autoincrement-offset';

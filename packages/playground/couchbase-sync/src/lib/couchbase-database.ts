@@ -227,6 +227,39 @@ export class CouchbaseDatabase {
 		return Array.from(collections);
 	}
 
+	/**
+	 * Resolves all PouchDB conflicts by deleting losing revisions.
+	 * PouchDB deterministically picks a winner based on revision
+	 * history; this method removes the losers so they don't
+	 * accumulate and cause confusion.
+	 *
+	 * Returns the number of conflicts resolved.
+	 */
+	async resolveConflicts(): Promise<number> {
+		const db = this.requireDb();
+		const result = await db.allDocs({
+			include_docs: true,
+			conflicts: true,
+		});
+
+		let resolved = 0;
+		for (const row of result.rows) {
+			const conflicts: string[] | undefined = row.doc?._conflicts;
+			if (!conflicts || conflicts.length === 0) {
+				continue;
+			}
+			for (const losingRev of conflicts) {
+				try {
+					await db.remove(row.id, losingRev);
+					resolved++;
+				} catch {
+					// Already deleted or inaccessible — skip
+				}
+			}
+		}
+		return resolved;
+	}
+
 	async saveFile(path: string, data: string): Promise<void> {
 		const db = this.requireDb();
 		const id = `${WP_FILES_COLLECTION}::${path}`;
@@ -418,12 +451,18 @@ export class CouchbaseDatabase {
 
 /**
  * Put a document, handling create vs update (fetching _rev).
+ * Skips the write when the body hasn't changed — this prevents
+ * periodic snapshots from creating unnecessary revisions that
+ * overwrite changes replicated from other sites.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function putDoc(db: any, id: string, body: Record<string, unknown>) {
 	const doc: Record<string, unknown> = { _id: id, ...body };
 	try {
 		const existing = await db.get(id);
+		if (docBodyEqual(existing, body)) {
+			return;
+		}
 		doc._rev = existing._rev;
 	} catch (e: unknown) {
 		if ((e as { status?: number }).status !== 404) {
@@ -431,6 +470,29 @@ async function putDoc(db: any, id: string, body: Record<string, unknown>) {
 		}
 	}
 	await db.put(doc);
+}
+
+/**
+ * Compares two document bodies, ignoring PouchDB internal fields
+ * (_id, _rev, _attachments, _conflicts). Returns true when all
+ * application-level fields are identical.
+ */
+function docBodyEqual(
+	existing: Record<string, unknown>,
+	newBody: Record<string, unknown>
+): boolean {
+	const SKIP = new Set(['_id', '_rev', '_attachments', '_conflicts']);
+	const existingKeys = Object.keys(existing).filter((k) => !SKIP.has(k));
+	const newKeys = Object.keys(newBody);
+	if (existingKeys.length !== newKeys.length) {
+		return false;
+	}
+	for (const key of newKeys) {
+		if (String(existing[key]) !== String(newBody[key])) {
+			return false;
+		}
+	}
+	return true;
 }
 
 /**

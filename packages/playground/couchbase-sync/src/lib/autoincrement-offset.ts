@@ -1,6 +1,7 @@
 import type { CouchbaseDatabase } from './couchbase-database';
 
 const OFFSET_DOC_ID = '_local/autoincrement_offset';
+const SEQUENCE_DOC_ID = '_local/playground_sequence';
 
 /**
  * Range for random offset generation. Each site picks a random
@@ -45,36 +46,57 @@ export async function getOrCreateOffset(
 }
 
 /**
- * Scans all synced documents in PouchDB to find the maximum
- * primary key value per WordPress table. Returns a map of
- * table → max_id that can be passed to
+ * Retrieves the saved playground_sequence values from PouchDB.
+ * These are persisted in a _local/ document (not replicated) so
+ * they survive page reloads. Returns the saved map of
+ * table → last_assigned_id, which can be passed directly to
  * `overrideAutoincrementSequences` as `knownIds`.
  *
- * This ensures the local autoincrement sequence starts above
- * any ID that has been synced from other sites, preventing
- * future collisions.
+ * On first boot (no saved sequence), returns an empty object so
+ * the PHP side uses the base offset for all tables.
  */
-export async function getMaxSyncedIds(
+export async function getSavedSequence(
 	cbDb: CouchbaseDatabase
 ): Promise<Record<string, number>> {
-	const maxIds: Record<string, number> = {};
-	const collections = cbDb.getDataCollectionNames();
-
-	for (const collection of collections) {
-		const docs = await cbDb.getAllDocuments(collection);
-		for (const doc of docs) {
-			if (!doc.body) {
-				continue;
-			}
-			const pkColumn = (doc.body.meta_pk_column as string) || 'id';
-			const pkValue = doc.body[pkColumn];
-			if (typeof pkValue === 'number' && pkValue > 0) {
-				maxIds[collection] = Math.max(maxIds[collection] ?? 0, pkValue);
-			}
-		}
+	const db = cbDb.getDatabase();
+	if (!db) {
+		return {};
 	}
 
-	return maxIds;
+	try {
+		const doc = await db.get(SEQUENCE_DOC_ID);
+		return (doc.sequence as Record<string, number>) ?? {};
+	} catch {
+		return {};
+	}
+}
+
+/**
+ * Saves the current playground_sequence values to PouchDB so
+ * they survive page reloads. Called after each periodic snapshot
+ * to keep the saved state fresh.
+ */
+export async function saveSequence(
+	cbDb: CouchbaseDatabase,
+	sequence: Record<string, number>
+): Promise<void> {
+	const db = cbDb.getDatabase();
+	if (!db) {
+		return;
+	}
+
+	try {
+		const existing = await db.get(SEQUENCE_DOC_ID);
+		await db.put({
+			...existing,
+			sequence,
+		});
+	} catch {
+		await db.put({
+			_id: SEQUENCE_DOC_ID,
+			sequence,
+		});
+	}
 }
 
 function randomOffset(): number {

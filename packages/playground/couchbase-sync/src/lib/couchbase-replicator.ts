@@ -11,6 +11,13 @@ const pouchdbReady = (async () => {
 })();
 import type { CouchbaseDatabase } from './couchbase-database';
 
+export type ReplicationStatus =
+	| 'idle'
+	| 'active'
+	| 'paused'
+	| 'error'
+	| 'stopped';
+
 export interface CouchbaseReplicatorConfig {
 	/** Remote CouchDB/PouchDB Server URL */
 	url: string;
@@ -20,6 +27,7 @@ export interface CouchbaseReplicatorConfig {
 	};
 	continuous?: boolean;
 	direction?: 'push' | 'pull' | 'pushAndPull';
+	onStatusChange?: (status: ReplicationStatus) => void;
 }
 
 /**
@@ -37,10 +45,20 @@ export class CouchbaseReplicatorManager {
 	private replication: any = null;
 	private cbDb: CouchbaseDatabase;
 	private config: CouchbaseReplicatorConfig;
+	private _status: ReplicationStatus = 'idle';
 
 	constructor(cbDb: CouchbaseDatabase, config: CouchbaseReplicatorConfig) {
 		this.cbDb = cbDb;
 		this.config = config;
+	}
+
+	get status(): ReplicationStatus {
+		return this._status;
+	}
+
+	private setStatus(status: ReplicationStatus) {
+		this._status = status;
+		this.config.onStatusChange?.(status);
 	}
 
 	async start(): Promise<void> {
@@ -65,6 +83,11 @@ export class CouchbaseReplicatorManager {
 			remoteUrl = url.toString();
 		}
 
+		// Ensure PouchDB replication fetch requests bypass the
+		// Service Worker, which would otherwise intercept them
+		// and route to the WASM PHP handler.
+		installFetchBypass(new URL(remoteUrl).origin);
+
 		const remoteDb = new PouchDB(remoteUrl);
 		const opts = { live: continuous, retry: continuous };
 
@@ -81,10 +104,13 @@ export class CouchbaseReplicatorManager {
 			`[CouchbaseSync] Replication started: ${direction} → ${remoteUrl}`
 		);
 
+		this.setStatus('active');
+
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		this.replication.on('error', (error: any) => {
 			// eslint-disable-next-line no-console
 			console.error('[CouchbaseSync] Replication error:', error);
+			this.setStatus('error');
 		});
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		this.replication.on('change', (info: any) => {
@@ -95,6 +121,15 @@ export class CouchbaseReplicatorManager {
 				info?.change?.docs_written ?? info?.docs_written ?? 0,
 				'docs'
 			);
+			this.setStatus('active');
+		});
+		this.replication.on('paused', () => {
+			// Paused = caught up with remote, waiting for changes
+			this.setStatus('paused');
+		});
+		this.replication.on('active', () => {
+			// Active = replication resumed after pause/reconnect
+			this.setStatus('active');
 		});
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		this.replication.on('denied', (err: any) => {
@@ -103,11 +138,17 @@ export class CouchbaseReplicatorManager {
 		});
 	}
 
+	async restart(): Promise<void> {
+		this.stop();
+		await this.start();
+	}
+
 	stop(): void {
 		if (this.replication) {
 			this.replication.cancel();
 			this.replication = null;
 		}
+		this.setStatus('stopped');
 	}
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any

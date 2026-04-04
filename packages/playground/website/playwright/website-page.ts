@@ -9,7 +9,7 @@ export class WebsitePage {
 	}
 
 	// Wait for WordPress to load
-	async waitForNestedIframes(page = this.page) {
+	async waitForNestedIframes(page = this.page, timeout?: number) {
 		await expect(
 			page
 				/* There are multiple viewports possible, so we need to select
@@ -19,7 +19,7 @@ export class WebsitePage {
 				)
 				.frameLocator('#wp')
 				.locator('body')
-		).not.toBeEmpty();
+		).not.toBeEmpty({ timeout });
 	}
 
 	wordpress(page = this.page) {

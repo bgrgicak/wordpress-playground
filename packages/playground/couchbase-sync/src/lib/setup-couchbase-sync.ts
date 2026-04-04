@@ -1,6 +1,12 @@
 import type { PlaygroundClient } from '@wp-playground/remote';
-import { installSqlSyncMuPlugin } from '@wp-playground/sync';
-import { CouchbaseDatabase } from './couchbase-database';
+import {
+	installSqlSyncMuPlugin,
+	overrideAutoincrementSequences,
+	replaySQLJournal,
+} from '@wp-playground/sync';
+import type { SQLJournalEntry } from '@wp-playground/sync';
+import { phpVar } from '@php-wasm/util';
+import { CouchbaseDatabase, WP_FILES_COLLECTION } from './couchbase-database';
 import {
 	CouchbaseReplicatorManager,
 	type CouchbaseReplicatorConfig,
@@ -12,7 +18,15 @@ import {
 import {
 	snapshotSqlToPouchDB,
 	snapshotFilesToPouchDB,
+	incrementalSnapshotSqlToPouchDB,
+	primeSnapshotCacheFromPouchDB,
 } from './snapshot-to-pouchdb';
+import {
+	getOrCreateOffset,
+	getSavedSequence,
+	saveSequence,
+} from './autoincrement-offset';
+import { couchbaseChangeToSqlJournalEntry } from './couchbase-to-sql';
 
 export interface CouchbaseSyncOptions {
 	/**
@@ -122,16 +136,88 @@ export async function setupCouchbaseSync(
 		);
 	}
 
-	// 3. Set up periodic re-snapshot of the database to PouchDB.
-	//    The real-time SQL journal pipeline requires onMessage
-	//    callbacks from the PHP worker, which don't work for
-	//    Service Worker-handled HTTP requests in the browser
-	//    (Comlink serialization prevents message delivery during
-	//    active requests). Instead, we periodically re-snapshot
-	//    the full database state to catch all changes.
+	// 3. Apply autoincrement offset so each collaborating site
+	//    generates primary keys in a different range, preventing
+	//    PK collisions (and thus PouchDB doc ID collisions) when
+	//    multiple sites sync to the same remote database.
+	//    The offset is stored in PouchDB (_local/ doc, never
+	//    replicated) and applied to WordPress on every boot.
+	const offset = await getOrCreateOffset(cbDb);
+	const savedSeq = await getSavedSequence(cbDb);
+	await overrideAutoincrementSequences(playground, offset, savedSeq);
+	// eslint-disable-next-line no-console
+	console.log(
+		`[CouchbaseSync] Autoincrement offset: ${offset}, savedSeq:`,
+		JSON.stringify(savedSeq)
+	);
+
+	// 4. Set up two-tier periodic snapshot of the database to
+	//    PouchDB. The real-time SQL journal pipeline requires
+	//    onMessage callbacks from the PHP worker, which don't
+	//    work for Service Worker-handled HTTP requests in the
+	//    browser (Comlink serialization blocks message delivery).
+	//
+	//    Tier 1 (every 5s): Incremental — fetches COUNT + MAX(pk)
+	//    per table in one PHP call. Only full-scans tables whose
+	//    metadata changed. Cost: O(num_tables) when idle.
+	//
+	//    Tier 2 (every 60s): Full sweep — re-scans ALL tables to
+	//    catch in-place UPDATEs that don't change count or max_pk.
 	const SNAPSHOT_INTERVAL_MS = 5000;
+	const FULL_SWEEP_EVERY_N = 12; // 12 × 5s = 60s
 	let snapshotTimer: ReturnType<typeof setInterval> | null = null;
 	let isSnapshotting = false;
+	let snapshotCycleCount = 0;
+
+	const SNAPSHOT_TIMEOUT_MS = 30000;
+
+	const doSnapshot = async () => {
+		snapshotCycleCount++;
+		const forceFullSweep = snapshotCycleCount % FULL_SWEEP_EVERY_N === 0;
+		const { tablesScanned } = await incrementalSnapshotSqlToPouchDB(
+			playground,
+			cbDb,
+			forceFullSweep
+		);
+		await snapshotFilesToPouchDB(playground, cbDb);
+		if (tablesScanned >= 0) {
+			// eslint-disable-next-line no-console
+			console.log(
+				`[CouchbaseSync] Snapshot cycle ${snapshotCycleCount}:` +
+					` ${tablesScanned} tables scanned` +
+					(forceFullSweep ? ' (full sweep)' : '')
+			);
+		}
+		// Persist playground_sequence values to PouchDB
+		// (_local/ doc, not replicated) so they survive
+		// page reloads.
+		const seqResult = await playground.run({
+			code: `<?php
+			require '/wordpress/wp-load.php';
+			$data = $GLOBALS['@pdo']
+				->query('SELECT * FROM playground_sequence')
+				->fetchAll(PDO::FETCH_KEY_PAIR);
+			$intData = [];
+			foreach ($data as $k => $v) { $intData[$k] = (int)$v; }
+			echo json_encode($intData);
+			`,
+		});
+		try {
+			const seq = JSON.parse(new TextDecoder().decode(seqResult.bytes));
+			await saveSequence(cbDb, seq);
+		} catch {
+			// Non-critical — sequence will be rebuilt on next boot
+		}
+		// Resolve any PouchDB conflicts that accumulated
+		// from concurrent replication.
+		const resolved = await cbDb.resolveConflicts();
+		if (resolved > 0) {
+			// eslint-disable-next-line no-console
+			console.log(
+				`[CouchbaseSync] Resolved ${resolved} PouchDB conflicts.`
+			);
+		}
+	};
 
 	const periodicSnapshot = async () => {
 		if (isSnapshotting) {
@@ -139,8 +225,22 @@ export async function setupCouchbaseSync(
 		}
 		isSnapshotting = true;
 		try {
-			await snapshotSqlToPouchDB(playground, cbDb);
-			await snapshotFilesToPouchDB(playground, cbDb);
+			await Promise.race([
+				doSnapshot(),
+				new Promise<never>((_, reject) =>
+					setTimeout(
+						() =>
+							reject(
+								new Error(
+									'Snapshot timed out after ' +
+										SNAPSHOT_TIMEOUT_MS +
+										'ms'
+								)
+							),
+						SNAPSHOT_TIMEOUT_MS
+					)
+				),
+			]);
 		} catch (e) {
 			// eslint-disable-next-line no-console
 			console.error('[CouchbaseSync] Periodic snapshot failed:', e);
@@ -151,16 +251,81 @@ export async function setupCouchbaseSync(
 
 	snapshotTimer = setInterval(periodicSnapshot, SNAPSHOT_INTERVAL_MS);
 
-	// 4. Optionally start remote replication
+	// 5. Optionally start remote replication
 	let replicator: CouchbaseReplicatorManager | null = null;
 	if (options.remote) {
 		replicator = new CouchbaseReplicatorManager(cbDb, options.remote);
 		await replicator.start();
+
+		// 6. Live pull→replay: when documents arrive via
+		//    replication, apply them to the local WordPress so
+		//    the WASM instance stays in sync with the remote.
+		const WP_CONTENT_PATH = '/wordpress/wp-content';
+		const pendingSql: SQLJournalEntry[] = [];
+		let replayTimer: ReturnType<typeof setTimeout> | null = null;
+		let isReplaying = false;
+
+		const flushPendingSql = async () => {
+			replayTimer = null;
+			if (isReplaying || pendingSql.length === 0) {
+				return;
+			}
+			isReplaying = true;
+			const batch = pendingSql.splice(0, pendingSql.length);
+			try {
+				await replaySQLJournal(playground, batch);
+			} catch (e) {
+				// eslint-disable-next-line no-console
+				console.error('[CouchbaseSync] Live replay failed:', e);
+			} finally {
+				isReplaying = false;
+				if (pendingSql.length > 0) {
+					replayTimer = setTimeout(flushPendingSql, 200);
+				}
+			}
+		};
+
+		cbDb.onDocumentChange(async (change) => {
+			if (change.collection === WP_FILES_COLLECTION) {
+				// File change — write or delete in WASM filesystem
+				if (change.body?.meta_path) {
+					const relPath = change.body.meta_path as string;
+					const absPath = `${WP_CONTENT_PATH}/${relPath}`;
+					if (change.deleted) {
+						try {
+							await playground.unlink(absPath);
+						} catch {
+							// File may not exist locally
+						}
+					} else if (change.body.data) {
+						const binary = atob(change.body.data as string);
+						const bytes = new Uint8Array(binary.length);
+						for (let i = 0; i < binary.length; i++) {
+							bytes[i] = binary.charCodeAt(i);
+						}
+						try {
+							await playground.writeFile(absPath, bytes);
+						} catch {
+							// Directory may not exist
+						}
+					}
+				}
+				return;
+			}
+
+			// SQL data change — queue for batched replay
+			const entry = couchbaseChangeToSqlJournalEntry(change);
+			if (entry) {
+				pendingSql.push(entry);
+				if (!replayTimer) {
+					replayTimer = setTimeout(flushPendingSql, 200);
+				}
+			}
+		});
 	}
 
 	return {
 		database: cbDb,
-		transport: null as any,
 		replicator,
 		stop: () => {
 			if (snapshotTimer) {

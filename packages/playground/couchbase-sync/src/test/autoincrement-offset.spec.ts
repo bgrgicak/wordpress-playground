@@ -5,7 +5,8 @@
 import { CouchbaseDatabase } from '../lib/couchbase-database';
 import {
 	getOrCreateOffset,
-	getMaxSyncedIds,
+	getSavedSequence,
+	saveSequence,
 } from '../lib/autoincrement-offset';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -64,57 +65,6 @@ describe('Autoincrement offset', () => {
 		await dbB.close();
 	});
 
-	it('getMaxSyncedIds returns max PK values per table', async () => {
-		const cbDb = new CouchbaseDatabase({
-			adapter: 'memory',
-			name: `maxids-test-${Date.now()}`,
-		});
-		await cbDb.open();
-
-		// Simulate synced data from another site
-		await cbDb.applyCouchbaseOps([
-			{
-				type: 'save',
-				collection: 'wp_posts',
-				docId: 'wp_posts::500000042',
-				body: {
-					meta_table: 'wp_posts',
-					meta_pk_column: 'ID',
-					ID: 500000042,
-					post_title: 'Remote Post',
-				},
-			},
-			{
-				type: 'save',
-				collection: 'wp_posts',
-				docId: 'wp_posts::500000099',
-				body: {
-					meta_table: 'wp_posts',
-					meta_pk_column: 'ID',
-					ID: 500000099,
-					post_title: 'Another Remote Post',
-				},
-			},
-			{
-				type: 'save',
-				collection: 'wp_options',
-				docId: 'wp_options::10',
-				body: {
-					meta_table: 'wp_options',
-					meta_pk_column: 'option_id',
-					option_id: 10,
-					option_name: 'test',
-				},
-			},
-		]);
-
-		const maxIds = await getMaxSyncedIds(cbDb);
-		expect(maxIds['wp_posts']).toBe(500000099);
-		expect(maxIds['wp_options']).toBe(10);
-
-		await cbDb.close();
-	});
-
 	it('two sites with random offsets produce non-overlapping IDs', async () => {
 		const dbA = new CouchbaseDatabase({
 			adapter: 'memory',
@@ -143,41 +93,30 @@ describe('Autoincrement offset', () => {
 		await dbB.close();
 	});
 
-	it('knownIds ensures new IDs start above synced data', async () => {
+	it('saveSequence persists and getSavedSequence retrieves', async () => {
 		const cbDb = new CouchbaseDatabase({
 			adapter: 'memory',
-			name: `knownids-test-${Date.now()}`,
+			name: `seq-persist-${Date.now()}`,
 		});
 		await cbDb.open();
 
-		// Simulate synced posts from a remote site with high IDs
-		await cbDb.applyCouchbaseOps([
-			{
-				type: 'save',
-				collection: 'wp_posts',
-				docId: 'wp_posts::999999',
-				body: {
-					meta_table: 'wp_posts',
-					meta_pk_column: 'ID',
-					ID: 999999,
-					post_title: 'High ID Post',
-				},
-			},
-		]);
+		// Initially empty
+		const empty = await getSavedSequence(cbDb);
+		expect(empty).toEqual({});
 
-		const offset = await getOrCreateOffset(cbDb);
-		const maxIds = await getMaxSyncedIds(cbDb);
+		// Save sequence values
+		const seq = { wp_posts: 500000042, wp_options: 500000010 };
+		await saveSequence(cbDb, seq);
 
-		// The offset should be large (random)
-		expect(offset).toBeGreaterThanOrEqual(1_000_000);
+		// Retrieve them
+		const saved = await getSavedSequence(cbDb);
+		expect(saved).toEqual(seq);
 
-		// maxIds should reflect the synced data
-		expect(maxIds['wp_posts']).toBe(999999);
-
-		// In production, setupPlaygroundSync passes both offset
-		// and knownIds to overrideAutoincrementSequences. The PHP
-		// code sets playground_sequence to max(offset, knownIds[table])
-		// for each table. So new posts will get IDs > 999999.
+		// Update and re-retrieve
+		const updated = { ...seq, wp_posts: 500000099 };
+		await saveSequence(cbDb, updated);
+		const reSaved = await getSavedSequence(cbDb);
+		expect(reSaved).toEqual(updated);
 
 		await cbDb.close();
 	});
