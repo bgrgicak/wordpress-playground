@@ -1,6 +1,7 @@
 ---
 title: Getting started
 slug: /blueprints/getting-started
+description: A quick-start guide to Blueprints. Understand what problems they solve and the different ways you can start using them.
 ---
 
 # Getting started with Blueprints
@@ -27,9 +28,9 @@ Blueprints are JSON files for setting up your very own WordPress Playground inst
 
 There are three ways to use Blueprints:
 
--   [Paste a Blueprint into the URL "fragment" on WordPress Playground website](/blueprints/using-blueprints#url-fragment).
--   [Use them with the JavaScript API](/blueprints/using-blueprints#javascript-api).
--   [Reference a blueprint JSON file via QueryParam blueprint-url](/developers/apis/query-api/)
+- [Paste a Blueprint into the URL "fragment" on WordPress Playground website](/blueprints/using-blueprints#url-fragment).
+- [Use them with the JavaScript API](/blueprints/using-blueprints#javascript-api).
+- [Reference a blueprint JSON file via QueryParam blueprint-url](/developers/apis/query-api/)
 
 ## What problems are solved by Blueprints?
 

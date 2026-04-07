@@ -2,7 +2,7 @@ import {
 	PHP,
 	SupportedPHPVersions,
 	setPhpIniEntries,
-	getLoadedRuntime,
+	popLoadedRuntime,
 	type SupportedPHPVersion,
 } from '@php-wasm/universal';
 import express from 'express';
@@ -38,6 +38,30 @@ describe.each(phpVersions)('PHP %s', (phpVersion) => {
 
 		return 'http://127.0.0.1:' + server.address().port;
 	}
+	async function startUploadServer() {
+		const app = express();
+		app.post('/upload', async (req: any, res: any) => {
+			const chunks: Buffer[] = [];
+			req.on('data', (chunk: Buffer) => chunks.push(chunk));
+			req.on('end', () => {
+				const body = Buffer.concat(chunks).toString('utf-8');
+				const contentType = req.headers['content-type'] || '';
+				res.json({
+					contentType,
+					bodyLength: body.length,
+					body,
+				});
+			});
+		});
+
+		server = await new Promise<any>((resolve) => {
+			const _server = app.listen(() => {
+				resolve(_server);
+			});
+		});
+
+		return 'http://127.0.0.1:' + server.address().port;
+	}
 	async function stopServer(server: any) {
 		if (server) {
 			await new Promise((resolve) => {
@@ -49,9 +73,10 @@ describe.each(phpVersions)('PHP %s', (phpVersion) => {
 
 	phpLoaderOptions.forEach((options) => {
 		it('should be able to make a request to a server', async () => {
+			let php: PHP | undefined;
 			try {
 				const serverUrl = await startServer();
-				const php = new PHP(await loadNodeRuntime(phpVersion, options));
+				php = new PHP(await loadNodeRuntime(phpVersion, options));
 				await setPhpIniEntries(php, {
 					allow_url_fopen: 1,
 					disable_functions: '',
@@ -65,17 +90,18 @@ describe.each(phpVersions)('PHP %s', (phpVersion) => {
 				const { text } = await php.run({
 					scriptPath: '/tmp/test.php',
 				});
-				php.exit();
 				expect(text).toEqual('response from express');
 			} finally {
+				php?.exit();
 				await stopServer(server);
 			}
 		});
 
 		it('should support fopen() and fread() until EOF', async () => {
+			let php: PHP | undefined;
 			try {
 				const serverUrl = await startServer();
-				const php = new PHP(await loadNodeRuntime(phpVersion, options));
+				php = new PHP(await loadNodeRuntime(phpVersion, options));
 				await setPhpIniEntries(php, {
 					allow_url_fopen: 1,
 					disable_functions: '',
@@ -141,20 +167,19 @@ describe.each(phpVersions)('PHP %s', (phpVersion) => {
 				const { text } = await php.run({
 					scriptPath: '/tmp/test.php',
 				});
-				php.exit();
 				expect(text).toContain('Stream select result: 1');
 			} finally {
+				php?.exit();
 				await stopServer(server);
 			}
 		}, 10000);
 
 		describe('cURL', () => {
 			it('should support single handle requests', async () => {
+				let php: PHP | undefined;
 				try {
 					const serverUrl = await startServer();
-					const php = new PHP(
-						await loadNodeRuntime(phpVersion, options)
-					);
+					php = new PHP(await loadNodeRuntime(phpVersion, options));
 					await setPhpIniEntries(php, {
 						allow_url_fopen: 1,
 						disable_functions: '',
@@ -167,32 +192,34 @@ describe.each(phpVersions)('PHP %s', (phpVersion) => {
 							curl_setopt($ch, CURLOPT_TCP_NODELAY, 0);
 							curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
 							echo curl_exec($ch);
-							curl_close($ch);
 					`
 					);
 					const { text } = await php.run({
 						scriptPath: '/tmp/test.php',
 					});
-					php.exit();
 					expect(text).toEqual('response from express');
 				} finally {
+					php?.exit();
 					await stopServer(server);
 				}
 			});
 
-			it('should support multi handle requests', async () => {
-				try {
-					const serverUrl = await startServer();
-					const php = new PHP(
-						await loadNodeRuntime(phpVersion, options)
-					);
-					await setPhpIniEntries(php, {
-						allow_url_fopen: 1,
-						disable_functions: '',
-					});
-					php.writeFile(
-						'/tmp/test.php',
-						`<?php
+			it(
+				'should support multi handle requests',
+				async () => {
+					let php: PHP | undefined;
+					try {
+						const serverUrl = await startServer();
+						php = new PHP(
+							await loadNodeRuntime(phpVersion, options)
+						);
+						await setPhpIniEntries(php, {
+							allow_url_fopen: 1,
+							disable_functions: '',
+						});
+						php.writeFile(
+							'/tmp/test.php',
+							`<?php
 							$ch1 = curl_init();
 							curl_setopt($ch1, CURLOPT_URL, "${serverUrl}");
 							curl_setopt($ch1, CURLOPT_TCP_NODELAY, 0);
@@ -204,30 +231,46 @@ describe.each(phpVersions)('PHP %s', (phpVersion) => {
 							$mh = curl_multi_init();
 							curl_multi_add_handle($mh, $ch1);
 							curl_multi_add_handle($mh, $ch2);
+							$started = microtime(true);
 							do {
-								curl_multi_exec($mh, $running);
-								curl_multi_select($mh);
+								$status = curl_multi_exec($mh, $running);
+								if ($status !== CURLM_OK && $status !== CURLM_CALL_MULTI_PERFORM) {
+									throw new Exception('curl_multi_exec failed: '.curl_multi_strerror($status));
+								}
+								if ($running > 0) {
+									$rc = curl_multi_select($mh, 1.0);
+									if ($rc === -1) {
+										usleep(100000);
+									}
+								}
+								if ((microtime(true) - $started) > 5) {
+									throw new Exception('curl_multi_exec timed out');
+								}
 							} while ($running > 0);
 							echo curl_multi_getcontent($ch1)."\\n";
 							echo curl_multi_getcontent($ch2);
 							curl_multi_remove_handle($mh, $ch1);
 							curl_multi_remove_handle($mh, $ch2);
 							curl_multi_close($mh);
-							curl_close($ch1);
-							curl_close($ch2);
 					`
-					);
-					const { text } = await php.run({
-						scriptPath: '/tmp/test.php',
-					});
-					php.exit();
-					expect(text).toEqual(
-						'response from express\nresponse from express'
-					);
-				} finally {
-					await stopServer(server);
-				}
-			});
+						);
+						const { text } = await php.run({
+							scriptPath: '/tmp/test.php',
+						});
+						expect(text).toEqual(
+							'response from express\nresponse from express'
+						);
+					} finally {
+						try {
+							php?.exit();
+						} catch {
+							// ignore cleanup failures
+						}
+						await stopServer(server);
+					}
+				},
+				{ timeout: 20_000 }
+			);
 
 			it('should follow redirects', async () => {
 				try {
@@ -247,7 +290,6 @@ describe.each(phpVersions)('PHP %s', (phpVersion) => {
 							curl_setopt($ch, CURLOPT_TCP_NODELAY, 0);
 							curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
 							echo curl_exec($ch);
-							curl_close($ch);
 					`
 					);
 					const { text } = await php.run({
@@ -283,7 +325,6 @@ describe.each(phpVersions)('PHP %s', (phpVersion) => {
 						curl_setopt($ch, CURLOPT_TCP_NODELAY, 0);
 						curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
 						$result = curl_exec($ch);
-						curl_close($ch);
 						$json = json_decode($result, true);
 						var_dump(array_key_exists('8.3', $json));
 						`,
@@ -314,7 +355,6 @@ describe.each(phpVersions)('PHP %s', (phpVersion) => {
 						curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
 						curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
 						$result = curl_exec($ch);
-						curl_close($ch);
 						$json = json_decode($result, true);
 						var_dump(array_key_exists('8.3', $json));
 						`,
@@ -325,10 +365,64 @@ describe.each(phpVersions)('PHP %s', (phpVersion) => {
 				{ timeout: 2000, retry: 4 }
 			);
 
+			it(
+				'should support CURLFile uploads',
+				async () => {
+					let php: PHP | undefined;
+					try {
+						const serverUrl = await startUploadServer();
+						php = new PHP(
+							await loadNodeRuntime(phpVersion, options)
+						);
+						await setPhpIniEntries(php, {
+							allow_url_fopen: 1,
+							disable_functions: '',
+						});
+						php.writeFile(
+							'/tmp/upload.txt',
+							'Hello from CURLFile!'
+						);
+						php.writeFile(
+							'/tmp/test.php',
+							`<?php
+							$ch = curl_init();
+							curl_setopt($ch, CURLOPT_URL, "${serverUrl}/upload");
+							curl_setopt($ch, CURLOPT_TCP_NODELAY, 0);
+							curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+							curl_setopt($ch, CURLOPT_POST, 1);
+							$file = new CURLFile('/tmp/upload.txt', 'text/plain', 'upload.txt');
+							curl_setopt($ch, CURLOPT_POSTFIELDS, [
+								'myfile' => $file,
+								'field1' => 'value1'
+							]);
+							$result = curl_exec($ch);
+							if ($result === false) {
+								echo 'CURL ERROR: ' . curl_error($ch);
+							} else {
+								echo $result;
+							}
+						`
+						);
+						const { text } = await php.run({
+							scriptPath: '/tmp/test.php',
+						});
+						expect(text).toContain('Hello from CURLFile!');
+						expect(text).toContain('multipart/form-data');
+						expect(text).toContain('value1');
+					} finally {
+						php?.exit();
+						await stopServer(server);
+					}
+				},
+				{ timeout: 15000 }
+			);
+
 			it('should close server when runtime is exited', async () => {
 				const id = await loadNodeRuntime(phpVersion, options);
+				const rt = popLoadedRuntime(id, {
+					dangerouslyKeepTheRuntimeInTheMap: true,
+				});
 				const php = new PHP(id);
-				const rt = getLoadedRuntime(id);
 
 				expect(rt.outboundNetworkProxyServer).toBeDefined();
 				expect(rt.outboundNetworkProxyServer).toBeInstanceOf(

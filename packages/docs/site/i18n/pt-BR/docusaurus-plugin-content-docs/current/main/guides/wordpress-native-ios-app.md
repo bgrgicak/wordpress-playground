@@ -1,7 +1,7 @@
 ---
-title: Playground in native iOS apps
+title: WordPress Playground em aplicações iOS nativas
 slug: /guides/wordpress-native-ios-app
-description: WordPress Playground in native iOS apps
+description: Descubra como executar um site WordPress em um aplicativo iOS nativo, com base no estudo de caso "Blocknotes" usando o Playground.
 ---
 
 <!--
@@ -53,12 +53,12 @@ Blocknotes operava como uma WebView executando uma página HTML onde uma versão
 
 No [repositório GitHub do Blocknotes](https://github.com/blocknotes-org/blocknotes/tree/e08535883332be9a45a0c75b750c54a4e17f6748), você pode revisar o último lançamento baseado no Playground. Aqui estão as partes mais importantes:
 
--   [Uma build do WordPress](https://github.com/blocknotes-org/blocknotes/blob/e08535883332be9a45a0c75b750c54a4e17f6748/src/js/wp-6.2.data) (empacotada como um arquivo `.data`).
--   [Recursos estáticos do WordPress](https://github.com/blocknotes-org/blocknotes/tree/e08535883332be9a45a0c75b750c54a4e17f6748/public).
--   [Uma build WebAssembly do PHP](https://github.com/blocknotes-org/blocknotes/tree/e08535883332be9a45a0c75b750c54a4e17f6748/node_modules/%40php-wasm/web) (via [@php-wasm/web](https://npmjs.com/package/@php-wasm/web)).
--   [Um web worker executando PHP e WordPress](https://github.com/blocknotes-org/blocknotes/blob/e08535883332be9a45a0c75b750c54a4e17f6748/src/js/worker.js).
--   Plugin WordPress [Hypernotes](https://wordpress.com/plugins/hypernotes) ([instalado aqui](https://github.com/blocknotes-org/blocknotes/blob/e08535883332be9a45a0c75b750c54a4e17f6748/src/js/index.js#L160)) para transformar wp-admin em um aplicativo de anotações.
--   Uma camada para [carregar posts do WordPress de arquivos iOS](https://github.com/blocknotes-org/blocknotes/blob/e08535883332be9a45a0c75b750c54a4e17f6748/src/js/index.js#L39) e [salvar alterações como arquivos iOS](https://github.com/blocknotes-org/blocknotes/blob/e08535883332be9a45a0c75b750c54a4e17f6748/src/js/save-data.js).
+- [Uma build do WordPress](https://github.com/blocknotes-org/blocknotes/blob/e08535883332be9a45a0c75b750c54a4e17f6748/src/js/wp-6.2.data) (empacotada como um arquivo `.data`).
+- [Recursos estáticos do WordPress](https://github.com/blocknotes-org/blocknotes/tree/e08535883332be9a45a0c75b750c54a4e17f6748/public).
+- [Uma build WebAssembly do PHP](https://github.com/blocknotes-org/blocknotes/tree/e08535883332be9a45a0c75b750c54a4e17f6748/node_modules/%40php-wasm/web) (via [@php-wasm/web](https://npmjs.com/package/@php-wasm/web)).
+- [Um web worker executando PHP e WordPress](https://github.com/blocknotes-org/blocknotes/blob/e08535883332be9a45a0c75b750c54a4e17f6748/src/js/worker.js).
+- Plugin WordPress [Hypernotes](https://wordpress.com/plugins/hypernotes) ([instalado aqui](https://github.com/blocknotes-org/blocknotes/blob/e08535883332be9a45a0c75b750c54a4e17f6748/src/js/index.js#L160)) para transformar wp-admin em um aplicativo de anotações.
+- Uma camada para [carregar posts do WordPress de arquivos iOS](https://github.com/blocknotes-org/blocknotes/blob/e08535883332be9a45a0c75b750c54a4e17f6748/src/js/index.js#L39) e [salvar alterações como arquivos iOS](https://github.com/blocknotes-org/blocknotes/blob/e08535883332be9a45a0c75b750c54a4e17f6748/src/js/save-data.js).
 
 <!--
 ## Building your own iOS app with WordPress Playground

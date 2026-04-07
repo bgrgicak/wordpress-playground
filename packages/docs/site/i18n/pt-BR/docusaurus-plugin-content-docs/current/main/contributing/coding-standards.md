@@ -1,5 +1,7 @@
 ---
 slug: /contributing/coding-standards
+title: Princípios de codificação
+description: Detalha os princípios de codificação do Playground, com foco em mensagens de erro úteis, uma API pública mínima e Blueprints.
 ---
 
 <!--
@@ -33,10 +35,10 @@ Considere um erro de rede, por exemplo: podemos inferir o tipo de erro e exibir 
 -   **CORS**: clarify it's a browser security feature and add a link to a detailed explanation (on MDN or another reliable source). Suggest the user move their file somewhere else, like `raw.githubusercontent.com`, and link to a resource explaining how to set up CORS headers on their servers.
 -->
 
--   **Erro de rede**: "Sua conexão com a internet oscilou. Tente recarregar a página."
--   **404**: "Não foi possível encontrar o arquivo".
--   **403**: "O servidor bloqueou o acesso ao arquivo".
--   **CORS**: esclareça que é um recurso de segurança do navegador e adicione um link para uma explicação detalhada (no MDN ou outra fonte confiável). Sugira que o usuário mova o arquivo para outro lugar, como `raw.githubusercontent.com`, e adicione um link para um recurso explicando como configurar os cabeçalhos CORS em seus servidores.
+- **Erro de rede**: "Sua conexão com a internet oscilou. Tente recarregar a página."
+- **404**: "Não foi possível encontrar o arquivo".
+- **403**: "O servidor bloqueou o acesso ao arquivo".
+- **CORS**: esclareça que é um recurso de segurança do navegador e adicione um link para uma explicação detalhada (no MDN ou outra fonte confiável). Sugira que o usuário mova o arquivo para outro lugar, como `raw.githubusercontent.com`, e adicione um link para um recurso explicando como configurar os cabeçalhos CORS em seus servidores.
 
 <!--
 We handle code formatting and linting automatically. Relax, type away, and let the machines do the work.
@@ -66,7 +68,7 @@ APIs públicas são fáceis de adicionar e difíceis de remover. Basta um PR par
 -   Don't expose unnecessary functions, classes, constants, or other components.
 -->
 
--   Não exponha funções, classes, constantes ou outros componentes desnecessários.
+- Não exponha funções, classes, constantes ou outros componentes desnecessários.
 
 <!--
 ## Blueprints
@@ -100,11 +102,11 @@ Os passos de um Blueprint devem ser **concisos e focados**. Devem fazer uma cois
 -   Add unit tests to verify that.
 -->
 
--   Se precisar criar um novo passo, tente refatorar um existente primeiro.
--   Se isso não for suficiente, garanta que o novo passo ofereça uma nova capacidade. Não replique a funcionalidade de passos existentes.
--   Suponha que o passo será chamado mais de uma vez.
--   Suponha que ele será executado em uma ordem específica.
--   Adicione testes unitários para verificar isso.
+- Se precisar criar um novo passo, tente refatorar um existente primeiro.
+- Se isso não for suficiente, garanta que o novo passo ofereça uma nova capacidade. Não replique a funcionalidade de passos existentes.
+- Suponha que o passo será chamado mais de uma vez.
+- Suponha que ele será executado em uma ordem específica.
+- Adicione testes unitários para verificar isso.
 
 <!--
 Blueprints should be **intuitive and straightforward**.
@@ -121,9 +123,9 @@ Blueprints devem ser **intuitivos e diretos**.
 -   Provide a usage example in the doc string. It's automatically reflected in the docs.
 -->
 
--   Não exija argumentos que possam ser opcionais.
--   Use argumentos simples. Por exemplo, `slug` em vez de `path`.
--   Defina constantes em arquivos JSON virtuais—não modifique arquivos PHP.
--   Defina um tipo TypeScript para o Blueprint. É assim que o Playground gera seu esquema JSON.
--   Escreva uma função para lidar com um passo do Blueprint. Aceite o argumento do tipo que você definiu.
--   Forneça um exemplo de uso na doc string. Ele é refletido automaticamente nos documentos.
+- Não exija argumentos que possam ser opcionais.
+- Use argumentos simples. Por exemplo, `slug` em vez de `path`.
+- Defina constantes em arquivos JSON virtuais—não modifique arquivos PHP.
+- Defina um tipo TypeScript para o Blueprint. É assim que o Playground gera seu esquema JSON.
+- Escreva uma função para lidar com um passo do Blueprint. Aceite o argumento do tipo que você definiu.
+- Forneça um exemplo de uso na doc string. Ele é refletido automaticamente nos documentos.

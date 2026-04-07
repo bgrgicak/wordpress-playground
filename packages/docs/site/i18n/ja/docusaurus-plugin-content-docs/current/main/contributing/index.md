@@ -1,13 +1,14 @@
 ---
-title: イントロダクション
+title: WordPress Playgroundプロジェクトへの貢献
 slug: /contributing
 id: introduction
+description: WordPress Playground への貢献の出発点です。コード、ドキュメント、バグ報告に関するガイドラインをご覧ください。
 ---
 
-# WP Playground プロジェクトへの貢献
+# WordPress Playground プロジェクトへの貢献
 
 <!--
-# Contributing to WP Playground project
+# Contributing to WordPress Playground project
 -->
 
 WordPress Playground は、コードからデザイン、ドキュメントからトリアージまで、あらゆる種類の貢献者を歓迎するオープンソース プロジェクトです。
@@ -22,10 +23,10 @@ WordPress Playground is an open-source project that welcomes contributors of all
 ## How can I contribute?
 -->
 
--   コードですか？[開発者向けセクション](/contributing/code)をご覧ください。
--   ドキュメントですか？[ドキュメントセクション](/contributing/documentation)をご覧ください。
--   バグ報告ですか？GitHub のメインリポジトリ、または[Playground Tools](https://github.com/WordPress/playground-tools/issues/new)で[新しい問題](https://github.com/WordPress/wordpress-playground/issues/new)を開いてください。
--   アイデアやデザインなど、何かありましたら、[GitHub ディスカッション](https://github.com/WordPress/wordpress-playground/discussions)を開いて、ぜひお話しましょう！
+- コードですか？[開発者向けセクション](/contributing/code)をご覧ください。
+- ドキュメントですか？[ドキュメントセクション](/contributing/documentation)をご覧ください。
+- バグ報告ですか？GitHub のメインリポジトリ、または[Playground Tools](https://github.com/WordPress/playground-tools/issues/new)で[新しい問題](https://github.com/WordPress/wordpress-playground/issues/new)を開いてください。
+- アイデアやデザインなど、何かありましたら、[GitHub ディスカッション](https://github.com/WordPress/wordpress-playground/discussions)を開いて、ぜひお話しましょう！
 
 <!--
 -   Code? See the [developer section](/contributing/code).
@@ -40,9 +41,9 @@ WordPress Playground is an open-source project that welcomes contributors of all
 ## Guidelines
 -->
 
--   すべての WordPress プロジェクトと同様に、私たちは誰もが歓迎され、敬意を持って利用できる環境づくりに努めています。詳しくは、コミュニティの[行動規範](https://make.wordpress.org/handbook/community-code-of-conduct/)をお読みください。
--   コード貢献者は[コーディング原則](/contributing/coding-standards)を確認してください。
--   貢献したすべてのコードに対する著作権はあなたに帰属します。プルリクエストを送信することにより、そのコードを[WordPress Playground ライセンス](https://github.com/WordPress/wordpress-playground?tab=GPL-2.0-1-ov-file#readme)に基づいて公開することに同意したことになります。
+- すべての WordPress プロジェクトと同様に、私たちは誰もが歓迎され、敬意を持って利用できる環境づくりに努めています。詳しくは、コミュニティの[行動規範](https://make.wordpress.org/handbook/community-code-of-conduct/)をお読みください。
+- コード貢献者は[コーディング原則](/contributing/coding-standards)を確認してください。
+- 貢献したすべてのコードに対する著作権はあなたに帰属します。プルリクエストを送信することにより、そのコードを[WordPress Playground ライセンス](https://github.com/WordPress/wordpress-playground?tab=GPL-2.0-1-ov-file#readme)に基づいて公開することに同意したことになります。
 
 <!--
 -   As with all WordPress projects, we want to ensure a welcoming and respectful environment for everyone. Please read our community's [Code of Conduct](https://make.wordpress.org/handbook/community-code-of-conduct/) to learn more.
@@ -92,10 +93,10 @@ WordPress Playground and the WordPress project are strongly rooted in free and o
 As such, please be aware of the implications that your contributions will fall under:
 -->
 
--   貢献を行う際は、貢献内容が GPLv2（またはそれ以降）ライセンスの下で提供されることに同意するものとします。
--   GPL ライセンスには強力なコピーレフト条項があり、すべての派生作品がオープンソースであり、同一のライセンス条件の下で提供されることを保証するため、共同開発環境が促進されます。
--   GPL ライセンスでは、変更、バグ修正、新機能などを元のコードベースに還元することが推奨されます。
--   GPL ライセンスは、コスト面だけでなく、ソフトウェアの使用、変更、配布の自由に関しても、プロジェクトがフリーかつオープンソースであることを保証します。
+- 貢献を行う際は、貢献内容が GPLv2（またはそれ以降）ライセンスの下で提供されることに同意するものとします。
+- GPL ライセンスには強力なコピーレフト条項があり、すべての派生作品がオープンソースであり、同一のライセンス条件の下で提供されることを保証するため、共同開発環境が促進されます。
+- GPL ライセンスでは、変更、バグ修正、新機能などを元のコードベースに還元することが推奨されます。
+- GPL ライセンスは、コスト面だけでなく、ソフトウェアの使用、変更、配布の自由に関しても、プロジェクトがフリーかつオープンソースであることを保証します。
 
 <!--
 -   When you contribute, you agree to license your contributions under the GPLv2 (or later) license

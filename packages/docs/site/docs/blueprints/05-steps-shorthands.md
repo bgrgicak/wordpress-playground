@@ -1,5 +1,6 @@
 ---
 slug: /blueprints/steps/shorthands
+description: A guide to the shorthand syntax for common Blueprint steps like login, plugins, and siteOptions for more concise code.
 ---
 
 # Shorthands
@@ -123,7 +124,7 @@ The `shorthand` syntax and the `step` syntax correspond to each other. Every `st
 
 :::info **Which should you choose?**
 
--   Use `shorthands` when **brevity** is your main concern.
--   Use explicit `steps` when you need more control over the **execution order**.
+- Use `shorthands` when **brevity** is your main concern.
+- Use explicit `steps` when you need more control over the **execution order**.
 
 :::

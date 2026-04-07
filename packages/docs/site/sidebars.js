@@ -44,10 +44,15 @@ const sidebars = {
 						id: 'main/guides/index',
 					},
 					items: [
+						'main/guides/agent-skill-wp-playground',
 						'main/guides/wordpress-native-ios-app',
 						'main/guides/for-plugin-developers',
 						'main/guides/for-theme-developers',
 						'main/guides/providing-content-for-your-demo',
+						'main/guides/github-action-pr-preview',
+						'main/guides/playground-for-everyone',
+						'main/guides/programmatic-playground-cli',
+						'main/guides/e2e-testing-with-playwright',
 					],
 				},
 				{
@@ -59,8 +64,11 @@ const sidebars = {
 					},
 					items: [
 						'main/contributing/code',
+						'main/contributing/releases',
 						'main/contributing/coding-standards',
 						'main/contributing/contributor-day',
+						'main/contributing/contributor-badge',
+						'main/contributing/contributor-day-table-lead',
 						'main/contributing/documentation',
 						'main/contributing/translations',
 					],
@@ -137,6 +145,18 @@ const sidebars = {
 						'developers/local-development/wp-playground-cli',
 						'developers/local-development/vscode-extension',
 						'developers/local-development/php-wasm-node',
+					],
+				},
+				{
+					type: 'category',
+					label: 'Xdebug on Playground',
+					link: {
+						type: 'doc',
+						id: 'developers/xdebug/introduction',
+					},
+					items: [
+						'developers/xdebug/introduction',
+						'developers/xdebug/getting-started',
 					],
 				},
 				{

@@ -1,5 +1,7 @@
 ---
 slug: /contributing/code
+title: Code contributions
+description: A guide for code contributions, covering how to fork the repo, set up a local environment, and submit a pull request.
 ---
 
 # Code contributions
@@ -8,7 +10,7 @@ Like all WordPress projects, Playground uses GitHub to manage code and track iss
 
 :::info Contribute to Playground Tools
 
-This guide includes links to the main repository, but all the steps and options apply for both. If you're interested in the plugins or local development tools—start there.
+This guide includes links to the main repository, but all the steps and options apply for both. If you're interested in the plugins or [local development](/developers/local-development/) tools—start there.
 
 :::
 
@@ -16,10 +18,10 @@ Browse [the list of open issues](https://github.com/wordpress/wordpress-playgrou
 
 Be sure to review the following resources before you begin:
 
--   [Coding principles](/contributing/coding-standards)
--   [Architecture](/developers/architecture)
--   [Vision and Philosophy](https://github.com/WordPress/wordpress-playground/issues/472)
--   [WordPress Playground Roadmap](https://github.com/WordPress/wordpress-playground/issues/525)
+- [Coding principles](/contributing/coding-standards)
+- [Architecture](/developers/architecture)
+- [Vision and Philosophy](https://github.com/WordPress/wordpress-playground/issues/472)
+- [WordPress Playground Roadmap](https://github.com/WordPress/wordpress-playground/issues/525)
 
 ## Contribute Pull Requests
 
@@ -41,6 +43,27 @@ npm run dev
 ```
 
 Playground will open in a new browser tab and refresh automatically with each change.
+
+:::tip Troubleshooting: File watcher limit on Linux
+
+On Linux, you might see an error like `ENOSPC: System limit for number of file watchers reached` when running `npm run dev`. This happens because the Playground repository has more files than the default system limit allows to watch.
+
+To fix this, first check your current limit:
+
+```bash
+cat /proc/sys/fs/inotify/max_user_watches
+```
+
+If it's around 65,536 or lower, increase it by running:
+
+```bash
+sudo sysctl fs.inotify.max_user_watches=131070
+sudo sysctl -p
+```
+
+Then try `npm run dev` again. This is a common issue on Debian, Ubuntu, and other Linux distributions.
+
+:::
 
 When your'e ready, commit the changes and submit a Pull Request.
 
@@ -74,8 +97,8 @@ Your dev server is now available on https://playground.test.
 
 If you're using VS Code and have Chrome installed, you can debug Playground in the code editor:
 
--   Open the project folder in VS Code.
--   Select Run > Start Debugging from the main menu or press `F5`/`fn`+`F5`.
+- Open the project folder in VS Code.
+- Select Run > Start Debugging from the main menu or press `F5`/`fn`+`F5`.
 
 ### Debugging PHP
 

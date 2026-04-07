@@ -4,7 +4,7 @@ import type {
 	FileReference,
 	DirectoryReference,
 	Directory,
-} from '../resources';
+} from '../v1/resources';
 import type { ActivatePluginStep } from './activate-plugin';
 import type { DefineSiteUrlStep } from './define-site-url';
 import type { InstallPluginStep, InstallPluginOptions } from './install-plugin';
@@ -127,7 +127,7 @@ export type StepProgress = {
 
 export type StepHandler<
 	S extends GenericStep<File, Directory>,
-	Return = any
+	Return = any,
 > = (
 	/**
 	 * A PHP instance or Playground client.

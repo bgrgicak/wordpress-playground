@@ -8,13 +8,13 @@ import { getPHPLoaderModule } from './get-php-loader-module';
 import type { TCPOverFetchOptions } from './tcp-over-fetch-websocket';
 import { tcpOverFetchWebsocket } from './tcp-over-fetch-websocket';
 import { withSMTPSink } from '@php-wasm/universal';
-import { withICUData } from './with-icu-data';
+import { withIntl } from './extensions/intl/with-intl';
 
 export interface LoaderOptions {
 	emscriptenOptions?: EmscriptenOptions;
 	onPhpLoaderModuleLoaded?: (module: PHPLoaderModule) => void;
 	tcpOverFetch?: TCPOverFetchOptions;
-	withICU?: boolean;
+	withIntl?: boolean;
 	withSMTPSink?: { port: number; onEmail: (m: any) => void };
 }
 
@@ -44,10 +44,27 @@ const fakeWebsocket = () => {
 	};
 };
 
+interface PHPWorkerGlobalScope extends WorkerGlobalScope {
+	setImmediate: (fn: () => void) => void;
+}
+
 export async function loadWebRuntime(
 	phpVersion: SupportedPHPVersion,
 	loaderOptions: LoaderOptions = {}
 ) {
+	/*
+	 * Provide `setImmediate` so Emscripten doesn’t install its message-based
+	 * polyfill, which retains references to the Wasm HEAP and prevents the
+	 * PHP instance from being garbage-collected.
+	 *
+	 * https://github.com/emscripten-core/emscripten/blob/6d61ffd7076309cb08af37aba496f25c23cdb5a4/src/lib/libeventloop.js#L57
+	 */
+	if (!('setImmediate' in globalThis)) {
+		(globalThis as unknown as PHPWorkerGlobalScope).setImmediate = (
+			fn: () => void
+		) => setTimeout(fn, 0);
+	}
+
 	let emscriptenOptions: EmscriptenOptions | Promise<EmscriptenOptions> = {
 		...fakeWebsocket(),
 		...(loaderOptions.emscriptenOptions || {}),
@@ -61,7 +78,8 @@ export async function loadWebRuntime(
 	}
 
 	if (loaderOptions.withSMTPSink) {
-		const prevWs = (await emscriptenOptions)['websocket'] || {};
+		const resolved = await emscriptenOptions;
+		const prevWs = resolved['websocket'] || {};
 		const prevDecorator = prevWs.decorator as
 			| ((Base: any) => any)
 			| undefined;
@@ -70,7 +88,7 @@ export async function loadWebRuntime(
 			Base: any
 		) => any;
 		emscriptenOptions = {
-			...(await emscriptenOptions),
+			...resolved,
 			websocket: {
 				...prevWs,
 				decorator: (Base: any) => {
@@ -83,8 +101,8 @@ export async function loadWebRuntime(
 		};
 	}
 
-	if (loaderOptions.withICU) {
-		emscriptenOptions = withICUData(emscriptenOptions);
+	if (loaderOptions.withIntl) {
+		emscriptenOptions = withIntl(phpVersion, emscriptenOptions);
 	}
 
 	const [phpLoaderModule, options] = await Promise.all([

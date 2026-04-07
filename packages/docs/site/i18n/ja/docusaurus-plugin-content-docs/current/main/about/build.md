@@ -1,7 +1,7 @@
 ---
 title: 構築
 slug: /about/build
-description: WP Playground で構築する
+description: ローカル環境の設定からテーマや新しいツールの作成まで、WordPress Playground が製品の構築にどのように役立つかを学びます。
 sidebar_class_name: navbar-build-item
 ---
 
@@ -29,10 +29,10 @@ Playground を開発ワークフローにシームレスに統合することで
 You can seamlessly integrate Playground into your development workflow to launch a local WordPress environment quickly for testing your code. You can do this directly [from the terminal](/developers/local-development/wp-playground-cli) or [your preferred IDE.](/developers/local-development/vscode-extension)
 -->
 
-## ブロックテーマの変更を保存し、Github プルリクエストを作成します
+## ブロックテーマの変更を保存し、GitHub プルリクエストを作成します
 
 <!--
-## Save changes done on a Block Theme and create Github Pull Requests
+## Save changes done on a Block Theme and create GitHub Pull Requests
 -->
 
 Playground インスタンスを GitHub リポジトリに接続し、[Create Block Theme](https://wordpress.org/plugins/create-block-theme/) プラグインを利用して、WordPress UI から行った変更を含むプル リクエストを作成できます。
@@ -56,21 +56,21 @@ With this workflow, you could build a block theme completely in your browser and
 Some more examples of this workflow:
 -->
 
--   [Developer Hours: テストとデモ用の WordPress Playground ブループリントの作成](https://www.youtube.com/watch?v=gKrij8V3nK0&t=2488s)
--   [Hallway Hangout のまとめ: Playground、Create-block-theme プラグイン、GitHub を使ったテーマ構築](https://make.wordpress.org/core/2024/06/25/recap-hallway-hangout-theme-building-with-playground-create-block-theme-plugin-and-github/)
+- [Developer Hours: テストとデモ用の WordPress Playground ブループリントの作成](https://www.youtube.com/watch?v=gKrij8V3nK0&t=2488s)
+- [Hallway Hangout のまとめ: Playground、Create-block-theme プラグイン、GitHub を使ったテーマ構築](https://make.wordpress.org/core/2024/06/25/recap-hallway-hangout-theme-building-with-playground-create-block-theme-plugin-and-github/)
 
 <!--
 -   [Developer Hours: Creating WordPress Playground Blueprints for Testing and Demos](https://www.youtube.com/watch?v=gKrij8V3nK0&t=2488s)
 -   [Recap Hallway Hangout: Theme Building with Playground, Create-block-theme plugin, and GitHub](https://make.wordpress.org/core/2024/06/25/recap-hallway-hangout-theme-building-with-playground-create-block-theme-plugin-and-github/)
 -->
 
-## プレイグラウンドインスタンスをローカルフォルダと同期し、Github プルリクエストを作成する
+## プレイグラウンドインスタンスをローカルフォルダと同期し、GitHub プルリクエストを作成する
 
 <!--
-## Synchronize your playground instance with a local folder and create Github Pull Requests
+## Synchronize your playground instance with a local folder and create GitHub Pull Requests
 -->
 
-![Storage Type Device Snapshot](../_assets/storage-type-device.png)
+![Storage Type Device Snapshot](https://raw.githubusercontent.com/WordPress/wordpress-playground/refs/heads/trunk/packages/docs/site/static/img/about/storage-type-device.webp)
 
 Google Chrome を使用すると、Playground インスタンスを次のいずれかのローカル ディレクトリと同期できます。
 
@@ -78,8 +78,8 @@ Google Chrome を使用すると、Playground インスタンスを次のいず�
 With Google Chrome you can synchronize your Playground instance with a local directory, that can be either:
 -->
 
--   空のディレクトリ – このプレイグラウンドを保存して同期を開始します
--   既存のディレクトリ – ここで読み込み、同期を開始します
+- 空のディレクトリ – このプレイグラウンドを保存して同期を開始します
+- 既存のディレクトリ – ここで読み込み、同期を開始します
 
 <!--
 -   And empty directory – to save this Playground and start syncing
@@ -106,8 +106,8 @@ This feature is only available for Google Chrome for now. It won't work with oth
 Regarding changes done on both sides of the connection:
 -->
 
--   Playground で変更されたファイルはコンピュータに同期されます。
--   コンピュータで変更されたファイルは Playground に同期されません。「ローカルファイルを同期」ボタンをクリックする必要があります。
+- Playground で変更されたファイルはコンピュータに同期されます。
+- コンピュータで変更されたファイルは Playground に同期されません。「ローカルファイルを同期」ボタンをクリックする必要があります。
 
 <!--
 -   Files changed in Playground will be synchronized to your computer.

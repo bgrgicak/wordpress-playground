@@ -1,5 +1,7 @@
 ---
 slug: /contributing/translations
+title: 翻訳への貢献
+description: ファイル構造、ローカルテスト、レビュープロセスなど、Playground ドキュメントを翻訳する方法を学びます。
 ---
 
 # 翻訳への貢献
@@ -140,8 +142,8 @@ With the proper i18n `docusaurus.config.js` configuration and files under `i18n`
 To locally test an existing language, you can do:
 -->
 
--   利用可能な言語のいずれかの配下のファイルを変更（翻訳）します：`packages/docs/site/i18n/{%LANGUAGE%}/docusaurus-plugin-content-docs/current`
--   `/packages/docs/site` から、テストしたい言語のバージョンを実行します。例えば、`es` をテストするには次のようにします。
+- 利用可能な言語のいずれかの配下のファイルを変更（翻訳）します：`packages/docs/site/i18n/{%LANGUAGE%}/docusaurus-plugin-content-docs/current`
+- `/packages/docs/site` から、テストしたい言語のバージョンを実行します。例えば、`es` をテストするには次のようにします。
 
 <!--
 -   Modify (translate) any file under one of the available languages: `packages/docs/site/i18n/{%LANGUAGE%}/docusaurus-plugin-content-docs/current`
@@ -201,9 +203,9 @@ It's strongly recommended that a specific language is activated in this Dropdown
 All languages are available once the i18n setup for a language is complete and the correct file structure is in place under `i18n`.
 -->
 
--   https://wordpress.github.io/wordpress-playground/
--   https://wordpress.github.io/wordpress-playground/es/
--   https://wordpress.github.io/wordpress-playground/fr/
+- https://wordpress.github.io/wordpress-playground/
+- https://wordpress.github.io/wordpress-playground/es/
+- https://wordpress.github.io/wordpress-playground/fr/
 
 これらの言語バージョンのドキュメントは、その言語に翻訳されたページが十分に増えるまで、言語スイッチャーでは非表示にしておく必要があります。より正確に言うと、少なくとも[ドキュメント](https://wordpress.github.io/wordpress-playground/)セクションが特定の言語に完全に翻訳され、以下のセクションも含まれている場合にのみ、言語スイッチャーでその言語を公開することをお勧めします。
 
@@ -211,12 +213,12 @@ All languages are available once the i18n setup for a language is complete and t
 These language versions of the docs should be hidden on the language switcher hidden until there's a fair amount of pages translated for that language. To be more precise, the recommendation is only to make a language publicly available on the Language Switcher when at least the [Documentation](https://wordpress.github.io/wordpress-playground/) section is completely translated for a specific language, including the following sections:
 -->
 
--   [Quick Start Guide](/quick-start-guide)
--   [Playground web instance](/web-instance)
--   [About Playground](/about)
--   [Guides](/guides)
--   [Contributing](/contributing)
--   [Links and Resources](/resources)
+- [Quick Start Guide](/quick-start-guide)
+- [Playground web instance](/web-instance)
+- [About Playground](/about)
+- [Guides](/guides)
+- [Contributing](/contributing)
+- [Links and Resources](/resources)
 
 <!--
 -   [Quick Start Guide](https://wordpress.github.io/wordpress-playground/quick-start-guide)

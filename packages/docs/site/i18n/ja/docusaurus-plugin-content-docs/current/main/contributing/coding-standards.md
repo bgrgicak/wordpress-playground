@@ -1,5 +1,7 @@
 ---
 slug: /contributing/coding-standards
+title: コーディング原則
+description: 役立つエラー メッセージ、最小限のパブリック API、ブループリントを中心に、Playground のコーディング原則について詳しく説明します。
 ---
 
 # コーディング原則
@@ -26,10 +28,10 @@ A good error message informs the user of the following steps to take. Any ambigu
 Consider a network error, for example—can we infer the type of error and display a relevant message summarizing the next steps?
 -->
 
--   **ネットワークエラー**: 「インターネット接続が不安定です。ページを再読み込みしてください。」
--   **404**: 「ファイルが見つかりませんでした。」
--   **403**: 「サーバーがファイルへのアクセスをブロックしました。」
--   **CORS**: ブラウザのセキュリティ機能であることを明確にし、詳細な説明へのリンク（MDN などの信頼できる情報源）を追加します。ユーザーにファイルを `raw.githubusercontent.com` などの別の場所に移動することを提案し、サーバー上で CORS ヘッダーを設定する方法を説明したリソースへのリンクを提供します。
+- **ネットワークエラー**: 「インターネット接続が不安定です。ページを再読み込みしてください。」
+- **404**: 「ファイルが見つかりませんでした。」
+- **403**: 「サーバーがファイルへのアクセスをブロックしました。」
+- **CORS**: ブラウザのセキュリティ機能であることを明確にし、詳細な説明へのリンク（MDN などの信頼できる情報源）を追加します。ユーザーにファイルを `raw.githubusercontent.com` などの別の場所に移動することを提案し、サーバー上で CORS ヘッダーを設定する方法を説明したリソースへのリンクを提供します。
 
 <!--
 -   **Network error**: "Your internet connection twitched. Try to reload the page.
@@ -62,7 +64,7 @@ Playground aims to keep the narrowest possible API scope.
 Public APIs are easy to add and hard to remove. It only takes one PR to introduce a new API, but it may take a thousand to remove it, especially if other projects have already consumed it.
 -->
 
--   不要な関数、クラス、定数、その他のコンポーネントを公開しないでください。
+- 不要な関数、クラス、定数、その他のコンポーネントを公開しないでください。
 
 <!--
 -   Don't expose unnecessary functions, classes, constants, or other components.
@@ -92,11 +94,11 @@ Blueprints are the primary way to interact with Playground. These JSON files des
 Blueprint steps should be **concise and focused**. They should do one thing and do it well.
 -->
 
--   新しいステップを作成する必要がある場合は、まず既存のステップをリファクタリングしてみてください。
--   それでも不十分な場合は、新しいステップが新しい機能を提供することを確認してください。既存のステップの機能を複製しないでください。
--   ステップが複数回呼び出されることを想定してください。
--   特定の順序で実行されることを想定してください。
--   それを検証するための単体テストを追加してください。
+- 新しいステップを作成する必要がある場合は、まず既存のステップをリファクタリングしてみてください。
+- それでも不十分な場合は、新しいステップが新しい機能を提供することを確認してください。既存のステップの機能を複製しないでください。
+- ステップが複数回呼び出されることを想定してください。
+- 特定の順序で実行されることを想定してください。
+- それを検証するための単体テストを追加してください。
 
 <!--
 -   If you need to create a new step, try refactoring an existing one first.
@@ -112,12 +114,12 @@ Blueprint steps should be **concise and focused**. They should do one thing and 
 Blueprints should be **intuitive and straightforward**.
 -->
 
--   省略可能な引数は必須にしないでください。
--   単純な引数を使用してください。例えば、`path` ではなく `slug` を使用してください。
--   定数は仮想 JSON ファイルで定義してください。PHP ファイルを変更しないでください。
--   Blueprint の TypeScript 型を定義してください。Playground はこのようにして JSON スキーマを生成します。
--   Blueprint ステップを処理する関数を記述してください。定義した型の引数を受け入れてください。
--   ドキュメント文字列に使用例を記載してください。これは自動的にドキュメントに反映されます。
+- 省略可能な引数は必須にしないでください。
+- 単純な引数を使用してください。例えば、`path` ではなく `slug` を使用してください。
+- 定数は仮想 JSON ファイルで定義してください。PHP ファイルを変更しないでください。
+- Blueprint の TypeScript 型を定義してください。Playground はこのようにして JSON スキーマを生成します。
+- Blueprint ステップを処理する関数を記述してください。定義した型の引数を受け入れてください。
+- ドキュメント文字列に使用例を記載してください。これは自動的にドキュメントに反映されます。
 
 <!--
 -   Don't require arguments that can be optional.

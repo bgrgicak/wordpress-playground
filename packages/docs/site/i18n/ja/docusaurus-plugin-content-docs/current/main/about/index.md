@@ -1,6 +1,7 @@
 ---
-title: プレイグラウンドについて
+title: WordPress プレイグラウンドについて
 slug: /about
+description: WordPress Playground の概要、それが何であるか、なぜ便利なのか、そしてブラウザで WordPress を実行する方法について説明します。
 ---
 
 # WordPress プレイグラウンドについて
@@ -27,9 +28,9 @@ WordPress Playground は、構築、テスト、起動を行う場所です。
 WordPress Playground is your place to build, test, and launch:
 -->
 
--   [ビルド](/about/build): WordPress Playground は、WordPress を使った製品開発をサポートします。ブラウザ、Node.js、モバイルアプリ、VS Code など、作業効率の高い環境からご利用いただけます。
--   [テスト](/about/test): WordPress Playground で QA プロセスをアップグレードしましょう。プラグインやテーマを素早くテストし、プライベートサンドボックスで実験を行い、WP Playground インスタンスから任意のリポジトリに PR を作成できます。
--   [リリース](/about/launch): WordPress Playground を使えば、製品を公開したり、ユーザーにライブで試用してもらったり、リードタイムなしで App Store にリリースしたりできます。
+- [ビルド](/about/build): WordPress Playground は、WordPress を使った製品開発をサポートします。ブラウザ、Node.js、モバイルアプリ、VS Code など、作業効率の高い環境からご利用いただけます。
+- [テスト](/about/test): WordPress Playground で QA プロセスをアップグレードしましょう。プラグインやテーマを素早くテストし、プライベートサンドボックスで実験を行い、WP Playground インスタンスから任意のリポジトリに PR を作成できます。
+- [リリース](/about/launch): WordPress Playground を使えば、製品を公開したり、ユーザーにライブで試用してもらったり、リードタイムなしで App Store にリリースしたりできます。
 
 <!--
 -   [Build](/about/build): WordPress Playground can help you to build products with WordPress. Use it from where you work best, whether that's in the browser, Node.js, mobile apps, VS Code, or elsewhere.

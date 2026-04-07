@@ -1,5 +1,7 @@
 ---
 slug: /contributing/contributor-day
+title: WordCamp コントリビューターデー
+description: WordCamp コントリビューターデー 中に VS Code 拡張機能や CLI などの Playground ツールを使用するためのガイドです。
 ---
 
 # WordCamp コントリビューター デイ
@@ -232,9 +234,9 @@ You can translate supported WordPress Plugins by loading the plugin you want to 
 Have a question or an idea for a new feature? Found a bug? Something’s not working as expected? We’re here to help:
 -->
 
--   コントリビューター デイ 中は、**Playground テーブル** でご連絡ください。
--   [WordPress Playground GitHub リポジトリ](https://github.com/WordPress/wordpress-playground/issues/new) で Issue を開いてください。VS Code 拡張機能、NPM パッケージ、またはプラグインに関する問題の場合は、[Playground Tools リポジトリ](https://github.com/WordPress/playground-tools/issues/new) で Issue を開いてください。
--   [**#playground** Slack チャンネル](https://wordpress.slack.com/archives/C04EWKGDJ0K) でフィードバックを共有してください。
+- コントリビューター デイ 中は、**Playground テーブル** でご連絡ください。
+- [WordPress Playground GitHub リポジトリ](https://github.com/WordPress/wordpress-playground/issues/new) で Issue を開いてください。VS Code 拡張機能、NPM パッケージ、またはプラグインに関する問題の場合は、[Playground Tools リポジトリ](https://github.com/WordPress/playground-tools/issues/new) で Issue を開いてください。
+- [**#playground** Slack チャンネル](https://wordpress.slack.com/archives/C04EWKGDJ0K) でフィードバックを共有してください。
 
 <!--
 -   During Contributor Day, you can reach us at the **Playground table**.

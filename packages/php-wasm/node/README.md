@@ -2,12 +2,12 @@
 
 This package ships WebAssembly PHP binaries and the JavaScript API optimized for Node.js. It comes with the following PHP extensions:
 
--   SQLite
--   Libzip
--   Libpng
--   CLI
--   OpenSSL
--   MySQL
+- SQLite
+- Libzip
+- Libpng
+- CLI
+- OpenSSL
+- MySQL
 
 It uses the host filesystem directly and can access the network if you plug in a custom
 WS proxy.
@@ -20,11 +20,11 @@ import { loadNodeRuntime } from '@php-wasm/node';
 
 const php = new PHP(await loadNodeRuntime('8.3'));
 
-const output = await php.run({
+const output = await php.runStream({
 	code: '<?php phpinfo(); ?>',
 });
 
-console.log(response.text);
+console.log(await output.stdoutText);
 ```
 
 ## Attribution

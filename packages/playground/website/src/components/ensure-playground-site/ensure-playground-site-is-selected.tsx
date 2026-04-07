@@ -1,26 +1,20 @@
 import { useEffect, useState } from 'react';
-import type { ResolvedBlueprint } from '../../lib/state/url/resolve-blueprint-from-url';
-import { resolveBlueprintFromURL } from '../../lib/state/url/resolve-blueprint-from-url';
 import { useCurrentUrl } from '../../lib/state/url/router-hooks';
 import { opfsSiteStorage } from '../../lib/state/opfs/opfs-site-storage';
 import {
 	OPFSSitesLoaded,
 	selectSiteBySlug,
-	setTemporarySiteSpec,
-	deriveSiteNameFromSlug,
 } from '../../lib/state/redux/slice-sites';
 import {
 	selectActiveSite,
-	setActiveSite,
 	useAppDispatch,
 	useAppSelector,
 } from '../../lib/state/redux/store';
-import { redirectTo } from '../../lib/state/url/router';
 import { logger } from '@php-wasm/logger';
 import { usePrevious } from '../../lib/hooks/use-previous';
-import { modalSlugs } from '../layout';
-import { setActiveModal } from '../../lib/state/redux/slice-ui';
+import { modalSlugs, setActiveModal } from '../../lib/state/redux/slice-ui';
 import { selectClientBySiteSlug } from '../../lib/state/redux/slice-clients';
+import { useSitesAPI } from '../../lib/state/redux/site-management-api-middleware';
 
 /**
  * Ensures the redux store always has an activeSite value.
@@ -40,6 +34,7 @@ export function EnsurePlaygroundSiteIsSelected({
 	);
 	const activeSite = useAppSelector((state) => selectActiveSite(state));
 	const dispatch = useAppDispatch();
+	const sitesAPI = useSitesAPI();
 	const url = useCurrentUrl();
 	const requestedSiteSlug = url.searchParams.get('site-slug');
 	const requestedSiteObject = useAppSelector((state) =>
@@ -53,8 +48,6 @@ export function EnsurePlaygroundSiteIsSelected({
 	const [needMissingSitePromptForSlug, setNeedMissingSitePromptForSlug] =
 		useState<false | string>(false);
 
-	const promptIfSiteMissing =
-		url.searchParams.get('if-stored-site-missing') === 'prompt';
 	const prevUrl = usePrevious(url);
 
 	useEffect(() => {
@@ -66,6 +59,7 @@ export function EnsurePlaygroundSiteIsSelected({
 		opfsSiteStorage.list().then(
 			(sites) => dispatch(OPFSSitesLoaded(sites)),
 			(error) => {
+				// @TODO: Display an error modal explaining what happened.
 				logger.error('Error loading sites:', error);
 				dispatch(OPFSSitesLoaded([]));
 			}
@@ -84,32 +78,18 @@ export function EnsurePlaygroundSiteIsSelected({
 
 			// If the site slug is provided, try to load the site.
 			if (requestedSiteSlug) {
-				// If the site does not exist, redirect to a new temporary site.
+				// If the site does not exist, create a new temporary site and prompt the user to save it.
 				if (!requestedSiteObject) {
-					if (promptIfSiteMissing) {
-						logger.log(
-							'The requested site was not found. Creating a new temporary site.'
-						);
+					logger.log(
+						'The requested site was not found. Creating a new temporary site.'
+					);
 
-						await createNewTemporarySite(
-							dispatch,
-							requestedSiteSlug
-						);
-						setNeedMissingSitePromptForSlug(requestedSiteSlug);
-						return;
-					} else {
-						// @TODO: Notification: 'The requested site was not found. Redirecting to a new temporary site.'
-						logger.log(
-							'The requested site was not found. Redirecting to a new temporary site.'
-						);
-						const currentUrl = new URL(window.location.href);
-						currentUrl.searchParams.delete('site-slug');
-						redirectTo(currentUrl.toString());
-						return;
-					}
+					await sitesAPI.createNewTemporarySite(requestedSiteSlug);
+					setNeedMissingSitePromptForSlug(requestedSiteSlug);
+					return;
 				}
 
-				dispatch(setActiveSite(requestedSiteSlug));
+				await sitesAPI.setActiveSite(requestedSiteSlug);
 				return;
 			}
 
@@ -125,7 +105,7 @@ export function EnsurePlaygroundSiteIsSelected({
 				return;
 			}
 
-			await createNewTemporarySite(dispatch);
+			await sitesAPI.createNewTemporarySite();
 		}
 
 		ensureSiteIsSelected();
@@ -148,53 +128,12 @@ export function EnsurePlaygroundSiteIsSelected({
 		dispatch,
 	]);
 
+	useEffect(() => {
+		const pageTitle = url.searchParams.get('page-title');
+		if (pageTitle) {
+			document.title = pageTitle;
+		}
+	}, [url.searchParams]);
+
 	return children;
-}
-
-function parseSearchParams(searchParams: URLSearchParams) {
-	const params: Record<string, any> = {};
-	for (const key of searchParams.keys()) {
-		const value = searchParams.getAll(key);
-		params[key] = value.length > 1 ? value : value[0];
-	}
-	return params;
-}
-async function createNewTemporarySite(
-	dispatch: ReturnType<typeof useAppDispatch>,
-	requestedSiteSlug?: string
-) {
-	// If the site slug is missing, create a new temporary site.
-	// Lean on the Query API parameters and the Blueprint API to
-	// create the new site.
-	const newUrl = new URL(window.location.href);
-	const defaultBlueprint =
-		'https://raw.githubusercontent.com/WordPress/blueprints/refs/heads/trunk/blueprints/welcome/blueprint.json';
-	let resolvedBlueprint: ResolvedBlueprint | undefined = undefined;
-
-	try {
-		resolvedBlueprint = await resolveBlueprintFromURL(
-			newUrl,
-			defaultBlueprint
-		);
-	} catch (e) {
-		logger.error('Error resolving blueprint:', e);
-	}
-
-	// Create a new site otherwise
-	const newSiteInfo = await dispatch(
-		setTemporarySiteSpec({
-			metadata: {
-				originalBlueprint: resolvedBlueprint?.blueprint,
-				originalBlueprintSource: resolvedBlueprint?.source,
-				name: requestedSiteSlug
-					? deriveSiteNameFromSlug(requestedSiteSlug)
-					: undefined,
-			},
-			originalUrlParams: {
-				searchParams: parseSearchParams(newUrl.searchParams),
-				hash: newUrl.hash,
-			},
-		})
-	);
-	await dispatch(setActiveSite(newSiteInfo.slug));
 }

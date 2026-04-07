@@ -125,7 +125,7 @@ export namespace Emscripten {
 	 * @param moduleOverrides Default properties for the initialized module.
 	 */
 	export type EmscriptenModuleFactory<
-		T extends EmscriptenModule = EmscriptenModule
+		T extends EmscriptenModule = EmscriptenModule,
 	> = (moduleOverrides?: Partial<T>) => Promise<T>;
 
 	// @ts-ignore: erasableSyntaxOnly conflict: Node.js can handle type-only namespaces like this.
@@ -149,7 +149,7 @@ export namespace Emscripten {
 
 		export interface Mount {
 			type: Emscripten.FileSystemType;
-			opts: object;
+			opts: Record<string, any>;
 			mountpoint: string;
 			mounts: Mount[];
 			root: FSNode;
@@ -185,6 +185,10 @@ export namespace Emscripten {
 			write: boolean;
 			readonly isFolder: boolean;
 			readonly isDevice: boolean;
+
+			// NOTE: As of 2025-11-11, this property is added by a php-wasm patch
+			// for NODEFS.createNode(). It is not part of the Emscripten FSNode interface.
+			readonly isSharedFS?: boolean;
 		}
 
 		export interface ErrnoError extends Error {
@@ -394,6 +398,7 @@ export namespace Emscripten {
 	export declare const MEMFS: Emscripten.FileSystemType;
 	export declare const NODEFS: Emscripten.FileSystemType;
 	export declare const IDBFS: Emscripten.FileSystemType;
+	export declare const PROXYFS: Emscripten.FileSystemType;
 
 	// https://emscripten.org/docs/porting/connecting_cpp_and_javascript/Interacting-with-code.html
 	type StringToType<R> = R extends Emscripten.JSType
@@ -403,7 +408,7 @@ export namespace Emscripten {
 				array: number[] | string[] | boolean[] | Uint8Array | Int8Array;
 				boolean: boolean;
 				null: null;
-		  }[R]
+			}[R]
 		: never;
 
 	type ArgsToType<T extends Array<Emscripten.JSType | null>> = Extract<
@@ -433,7 +438,7 @@ export namespace Emscripten {
 
 	export declare function cwrap<
 		I extends Array<Emscripten.JSType | null> | [],
-		R extends Emscripten.JSType | null
+		R extends Emscripten.JSType | null,
 	>(
 		ident: string,
 		returnType: R,
@@ -443,7 +448,7 @@ export namespace Emscripten {
 
 	export declare function ccall<
 		I extends Array<Emscripten.JSType | null> | [],
-		R extends Emscripten.JSType | null
+		R extends Emscripten.JSType | null,
 	>(
 		ident: string,
 		returnType: R,

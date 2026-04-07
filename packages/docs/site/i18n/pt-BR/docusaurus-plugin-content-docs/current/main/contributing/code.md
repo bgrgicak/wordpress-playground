@@ -1,5 +1,7 @@
 ---
 slug: /contributing/code
+title: Contribuições de código
+description: Um guia para contribuições de código, cobrindo como fazer um fork do repositório, configurar um ambiente local e enviar um pull request.
 ---
 
 <!--
@@ -47,10 +49,10 @@ Certifique-se de revisar os seguintes recursos antes de começar:
 -   [WordPress Playground Roadmap](https://github.com/WordPress/wordpress-playground/issues/525)
 -->
 
--   [Princípios de codificação](/contributing/coding-standards)
--   [Arquitetura](/developers/architecture)
--   [Visão e Filosofia](https://github.com/WordPress/wordpress-playground/issues/472)
--   [Roteiro do WordPress Playground](https://github.com/WordPress/wordpress-playground/issues/525)
+- [Princípios de codificação](/contributing/coding-standards)
+- [Arquitetura](/developers/architecture)
+- [Visão e Filosofia](https://github.com/WordPress/wordpress-playground/issues/472)
+- [Roteiro do WordPress Playground](https://github.com/WordPress/wordpress-playground/issues/525)
 
 <!--
 ## Contribute Pull Requests
@@ -170,8 +172,8 @@ Se você estiver usando o VS Code e tiver o Chrome instalado, poderá depurar o 
 -   Select Run > Start Debugging from the main menu or press `F5`/`fn`+`F5`.
 -->
 
--   Abra a pasta do projeto no VS Code.
--   Selecione Executar > Iniciar Depuração no menu principal ou pressione `F5`/`fn`+`F5`.
+- Abra a pasta do projeto no VS Code.
+- Selecione Executar > Iniciar Depuração no menu principal ou pressione `F5`/`fn`+`F5`.
 
 <!--
 ### Debugging PHP

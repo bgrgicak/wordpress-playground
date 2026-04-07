@@ -1,6 +1,7 @@
 ---
 title: Blueprint Bundles
 slug: /blueprints/bundles
+description: Learn about Blueprint bundles, self-contained packages that include a blueprint.json file and all its required resources.
 ---
 
 # Blueprint Bundles
@@ -16,10 +17,10 @@ A Blueprint bundle is a collection of files that includes:
 
 Blueprint bundles can be distributed in various formats:
 
--   A ZIP file with a top-level `blueprint.json` file and additional resources
--   A directory inside a git repository where `blueprint.json` resides alongside other resources
--   A local directory on your computer
--   An inline JavaScript object with the relevant files inlined
+- A ZIP file with a top-level `blueprint.json` file and additional resources
+- A directory inside a git repository where `blueprint.json` resides alongside other resources
+- A local directory on your computer
+- An inline JavaScript object with the relevant files inlined
 
 ## Using Blueprint Bundles
 
@@ -37,9 +38,9 @@ The ZIP file should contain a `blueprint.json` file at the root level, along wit
 
 The Playground CLI supports Blueprint bundles through the `--blueprint=` option. You can provide:
 
--   A path to a local directory containing a Blueprint bundle
--   A path to a local ZIP file containing a Blueprint bundle
--   A URL to a remote Blueprint bundle (http:// or https://)
+- A path to a local directory containing a Blueprint bundle
+- A path to a local ZIP file containing a Blueprint bundle
+- A URL to a remote Blueprint bundle (http:// or https://)
 
 For example:
 
@@ -118,10 +119,10 @@ Here's an example of a `blueprint.json` file that references bundled resources:
 
 In this example, the Blueprint references several bundled resources:
 
--   A text file at `/bundled-text-file.txt`
--   A theme ZIP file at `/theme.zip`
--   A plugin ZIP file at `/plugin.zip`
--   A WXR content file at `/content/sample-content.wxr`
+- A text file at `/bundled-text-file.txt`
+- A theme ZIP file at `/theme.zip`
+- A plugin ZIP file at `/plugin.zip`
+- A WXR content file at `/content/sample-content.wxr`
 
 ### Creating a ZIP Bundle
 

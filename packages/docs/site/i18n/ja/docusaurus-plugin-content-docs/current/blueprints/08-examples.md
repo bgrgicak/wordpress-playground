@@ -64,7 +64,7 @@ display={`{
 	"steps": [
 		{
 			"step": "runPHP",
-			"code": "<?php include 'wordpress/wp-load.php'; wp_insert_post(array( 'post_title' => 'Post title', 'post_content' => 'Post content', 'post_status' => 'publish', 'post_author' => 1 )); "
+			"code": "<?php require_once '/wordpress/wp-load.php'; wp_insert_post(array( 'post_title' => 'Post title', 'post_content' => 'Post content', 'post_status' => 'publish', 'post_author' => 1 )); "
 		}
 	]
 }` }
@@ -73,7 +73,7 @@ blueprint={{
 			{
 				"step": "runPHP",
 				"code": `<?php
-include 'wordpress/wp-load.php';
+require_once '/wordpress/wp-load.php';
 wp_insert_post(array(
 'post_title' => 'Post title',
 'post_content' => 'Post content',
@@ -382,10 +382,10 @@ Here's an example of a Blueprint that uses bundled resources from a Blueprint bu
 This Blueprint bundle would be zip file containing the following files:
 -->
 
--   `/blueprint.json` - 上記で説明したブループリントの宣言
--   `/my-theme.zip` - テーマパッケージ
--   `/my-plugin.zip` - プラグインパッケージ
--   `/assets/custom-page.html` - カスタム HTML ファイル
+- `/blueprint.json` - 上記で説明したブループリントの宣言
+- `/my-theme.zip` - テーマパッケージ
+- `/my-plugin.zip` - プラグインパッケージ
+- `/assets/custom-page.html` - カスタム HTML ファイル
 
 <!--
 -   `/blueprint.json` - The blueprint declaration outlined above

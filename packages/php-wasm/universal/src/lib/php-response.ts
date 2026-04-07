@@ -49,9 +49,18 @@ const responseTexts: Record<number, string> = {
 
 export class StreamedPHPResponse {
 	/**
-	 * Response headers.
+	 * Headers stream that doesn't get locked when the consumer
+	 * reads the parsed headers. api.ts transfers the obj.getHeadersStream(),
+	 * and boot-playground-remote.ts copies the streamedResponse.headers.
+	 * Both streams must be readable when the StreamedPHPResponse is transferred
+	 * from the worker thread into the service worker.
 	 */
-	private readonly headersStream: ReadableStream<Uint8Array>;
+	readonly #rawHeadersStream: ReadableStream<Uint8Array>;
+
+	/**
+	 * Headers stream reserved for internal parsing.
+	 */
+	readonly #copiedHeadersStreamForParsing: ReadableStream<Uint8Array>;
 
 	/**
 	 * Response body. Contains the output from `echo`,
@@ -70,12 +79,12 @@ export class StreamedPHPResponse {
 	 */
 	readonly exitCode: Promise<number>;
 
-	private parsedHeaders: Promise<{
+	private cachedParsedHeaders: Promise<{
 		headers: Record<string, string[]>;
 		httpStatusCode: number;
 	}> | null = null;
 
-	private cachedStdoutText: Promise<string> | null = null;
+	private cachedStdoutBytes: Promise<Uint8Array> | null = null;
 	private cachedStderrText: Promise<string> | null = null;
 
 	constructor(
@@ -84,10 +93,84 @@ export class StreamedPHPResponse {
 		stderr: ReadableStream<Uint8Array>,
 		exitCode: Promise<number>
 	) {
-		this.headersStream = headers;
+		const [forTransport, forParsing] = headers.tee();
+		this.#rawHeadersStream = forTransport;
+		this.#copiedHeadersStreamForParsing = forParsing;
 		this.stdout = stdout;
 		this.stderr = stderr;
 		this.exitCode = exitCode;
+	}
+
+	/**
+	 * Creates a StreamedPHPResponse from a buffered PHPResponse.
+	 * Useful for unifying response handling when both types may be returned.
+	 */
+	static fromPHPResponse(response: PHPResponse): StreamedPHPResponse {
+		// Create a ReadableStream containing the response bytes
+		const stdout = new ReadableStream<Uint8Array>({
+			start(controller) {
+				controller.enqueue(response.bytes);
+				controller.close();
+			},
+		});
+
+		// Encode headers into the stream in the JSON format that
+		// parseHeadersStream expects. This is critical for when
+		// the response crosses a worker thread boundary via
+		// Comlink — only the raw headersStream is serialized,
+		// not the parsedHeaders property.
+		const headerLines: string[] = [];
+		for (const [name, values] of Object.entries(response.headers)) {
+			for (const value of values) {
+				headerLines.push(`${name}: ${value}`);
+			}
+		}
+		const headersJson = JSON.stringify({
+			status: response.httpStatusCode,
+			headers: headerLines,
+		});
+		const headersStream = new ReadableStream<Uint8Array>({
+			start(controller) {
+				controller.enqueue(new TextEncoder().encode(headersJson));
+				controller.close();
+			},
+		});
+
+		const stderr = new ReadableStream<Uint8Array>({
+			start(controller) {
+				if (response.errors.length > 0) {
+					controller.enqueue(
+						new TextEncoder().encode(response.errors)
+					);
+				}
+				controller.close();
+			},
+		});
+
+		return new StreamedPHPResponse(
+			headersStream,
+			stdout,
+			stderr,
+			Promise.resolve(response.exitCode)
+		);
+	}
+
+	/**
+	 * Creates a StreamedPHPResponse for a given HTTP status code.
+	 * Shorthand for `StreamedPHPResponse.fromPHPResponse(PHPResponse.forHttpCode(...))`.
+	 */
+	static forHttpCode(httpStatusCode: number, text = ''): StreamedPHPResponse {
+		return StreamedPHPResponse.fromPHPResponse(
+			PHPResponse.forHttpCode(httpStatusCode, text)
+		);
+	}
+
+	/**
+	 * Returns the raw headers stream for serialization purposes.
+	 * For parsed headers, use the `headers` property instead.
+	 */
+	getHeadersStream(): ReadableStream<Uint8Array> {
+		return this.#rawHeadersStream;
 	}
 
 	/**
@@ -142,10 +225,19 @@ export class StreamedPHPResponse {
 	 * Exposes the stdout bytes as they're produced by the PHP instance
 	 */
 	get stdoutText(): Promise<string> {
-		if (!this.cachedStdoutText) {
-			this.cachedStdoutText = streamToText(this.stdout);
+		return this.stdoutBytes.then((bytes) =>
+			new TextDecoder().decode(bytes)
+		);
+	}
+
+	/**
+	 * Exposes the stdout bytes as they're produced by the PHP instance
+	 */
+	get stdoutBytes(): Promise<Uint8Array> {
+		if (!this.cachedStdoutBytes) {
+			this.cachedStdoutBytes = streamToBytes(this.stdout);
 		}
-		return this.cachedStdoutText;
+		return this.cachedStdoutBytes;
 	}
 
 	/**
@@ -159,10 +251,12 @@ export class StreamedPHPResponse {
 	}
 
 	private async getParsedHeaders() {
-		if (!this.parsedHeaders) {
-			this.parsedHeaders = parseHeadersStream(this.headersStream);
+		if (!this.cachedParsedHeaders) {
+			this.cachedParsedHeaders = parseHeadersStream(
+				this.#copiedHeadersStreamForParsing
+			);
 		}
-		return await this.parsedHeaders;
+		return await this.cachedParsedHeaders;
 	}
 }
 
@@ -215,6 +309,33 @@ async function streamToText(
 		}
 		if (value) {
 			text.push(value);
+		}
+	}
+}
+
+async function streamToBytes(
+	stream: ReadableStream<Uint8Array>
+): Promise<Uint8Array> {
+	const reader = stream.getReader();
+	const chunks: Uint8Array[] = [];
+
+	while (true) {
+		const { done, value } = await reader.read();
+		if (done) {
+			const totalLength = chunks.reduce(
+				(acc, chunk) => acc + chunk.byteLength,
+				0
+			);
+			const result = new Uint8Array(totalLength);
+			let offset = 0;
+			for (const chunk of chunks) {
+				result.set(chunk, offset);
+				offset += chunk.byteLength;
+			}
+			return result;
+		}
+		if (value) {
+			chunks.push(value);
 		}
 	}
 }
@@ -283,7 +404,7 @@ export class PHPResponse implements PHPResponseData {
 		return new PHPResponse(
 			await streamedResponse.httpStatusCode,
 			await streamedResponse.headers,
-			new TextEncoder().encode(await streamedResponse.stdoutText),
+			await streamedResponse.stdoutBytes,
 			await streamedResponse.stderrText,
 			await streamedResponse.exitCode
 		);

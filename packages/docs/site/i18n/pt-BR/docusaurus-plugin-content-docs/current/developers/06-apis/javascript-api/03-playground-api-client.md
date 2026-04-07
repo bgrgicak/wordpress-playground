@@ -14,9 +14,9 @@ O objeto `PlaygroundClient` implementa a interface `UniversalPHP`. Todos os mét
 
 De modo geral, você pode usar o cliente para realizar três tipos de operações:
 
--   Executar código PHP
--   Personalizar o `PHP.ini`
--   Gerenciar arquivos e diretórios
+- Executar código PHP
+- Personalizar o `PHP.ini`
+- Gerenciar arquivos e diretórios
 
 <!-- ## Running PHP code -->
 
@@ -26,8 +26,8 @@ De modo geral, você pode usar o cliente para realizar três tipos de operaçõe
 
 Os dois métodos que você pode usar para executar código PHP são:
 
--   [`run()`](#the-run-method) – executa código PHP e retorna a saída
--   [`request()`](#the-request-method) – faz uma requisição HTTP para o site
+- [`run()`](#the-run-method) – executa código PHP e retorna a saída
+- [`request()`](#the-request-method) – faz uma requisição HTTP para o site
 
 <!-- In Node.js, you can also use the [`cli()`](#the-cli-method) method to run PHP in a CLI mode. -->
 
@@ -105,14 +105,17 @@ Você pode enviar mensagens do PHP para o JavaScript usando a função `post_mes
 
 <!-- -   `$data` (string) – Data to pass to JavaScript. -->
 
--   `$data` (string) – Dados a serem enviados para o JavaScript.
+- `$data` (string) – Dados a serem enviados para o JavaScript.
 
 <!-- For example, here's how you would send a message with a JSON-encoded post ID and title: -->
 
 Por exemplo, veja como enviar uma mensagem com um ID e título de post codificados em JSON:
 
-```ts
-const php = await PHP.load('8.0');
+```TypeScript
+import { PHP } from '@php-wasm/universal';
+import { loadNodeRuntime } from '@php-wasm/node';
+
+const php = new PHP(await loadNodeRuntime('8.3'));
 
 php.onMessage(
 	// Os dados são sempre passados como string
@@ -123,8 +126,8 @@ php.onMessage(
 );
 
 // Agora que temos um listener, vamos
-enviar uma mensagem:
-await php.run({
+//enviar uma mensagem:
+await php.runStream({
 	code: `<?php
         post_message_to_js(
             json_encode([

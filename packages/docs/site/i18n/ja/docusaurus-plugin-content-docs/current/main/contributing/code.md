@@ -1,5 +1,7 @@
 ---
 slug: /contributing/code
+title: コードの貢献
+description: リポジトリをフォークする方法、ローカル環境をセットアップする方法、プルリクエストを送信する方法などを説明した、コード貢献のガイドです。
 ---
 
 # コードの貢献
@@ -40,10 +42,10 @@ Browse [the list of open issues](https://github.com/wordpress/wordpress-playgrou
 Be sure to review the following resources before you begin:
 -->
 
--   [コーディング原則](/contributing/coding-standards)
--   [アーキテクチャ](/developers/architecture)
--   [ビジョンと理念](https://github.com/WordPress/wordpress-playground/issues/472)
--   [WordPress Playground ロードマップ](https://github.com/WordPress/wordpress-playground/issues/525)
+- [コーディング原則](/contributing/coding-standards)
+- [アーキテクチャ](/developers/architecture)
+- [ビジョンと理念](https://github.com/WordPress/wordpress-playground/issues/472)
+- [WordPress Playground ロードマップ](https://github.com/WordPress/wordpress-playground/issues/525)
 
 <!--
 -   [Coding principles](/contributing/coding-standards)
@@ -165,8 +167,8 @@ VS Code を使用しており、Chrome がインストールされている場�
 If you're using VS Code and have Chrome installed, you can debug Playground in the code editor:
 -->
 
--   VS Code でプロジェクト フォルダーを開きます。
--   メイン メニューから [実行] > [デバッグの開始] を選択するか、`F5`/`fn`+`F5` を押します。
+- VS Code でプロジェクト フォルダーを開きます。
+- メイン メニューから [実行] > [デバッグの開始] を選択するか、`F5`/`fn`+`F5` を押します。
 
 <!--
 -   Open the project folder in VS Code.

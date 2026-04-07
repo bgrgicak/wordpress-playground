@@ -1,7 +1,7 @@
 ---
-title: ネイティブ iOS アプリのプレイグラウンド
+title: ネイティブiOSアプリのWordPress Playground
 slug: /guides/wordpress-native-ios-app
-description: ネイティブ iOS アプリの WordPress Playground
+description: Playground を使用した「Blocknotes」のケース スタディに基づいて、ネイティブ iOS アプリ内で WordPress サイトを実行する方法を学びます。
 ---
 
 ## Playground 経由でネイティブ iOS アプリで実際の WordPress サイトを配布するにはどうすればよいでしょうか?
@@ -58,12 +58,12 @@ Blocknotes operated as a WebView running an HTML page where a WebAssembly versio
 In [Blocknotes GitHub repository](https://github.com/blocknotes-org/blocknotes/tree/e08535883332be9a45a0c75b750c54a4e17f6748) you can review the last Playground-based release. Here are the most important parts:
 -->
 
--   [WordPress ビルド](https://github.com/blocknotes-org/blocknotes/blob/e08535883332be9a45a0c75b750c54a4e17f6748/src/js/wp-6.2.data) (`.data` ファイルとしてパッケージ化されています)。
--   [静的 WordPress アセット](https://github.com/blocknotes-org/blocknotes/tree/e08535883332be9a45a0c75b750c54a4e17f6748/public)。
--   [PHP の WebAssembly ビルド](https://github.com/blocknotes-org/blocknotes/tree/e08535883332be9a45a0c75b750c54a4e17f6748/node_modules/%40php-wasm/web) ([@php-wasm/web](https://npmjs.com/package/@php-wasm/web) 経由)。
--   [PHP と WordPress を実行する Web ワーカー](https://github.com/blocknotes-org/blocknotes/blob/e08535883332be9a45a0c75b750c54a4e17f6748/src/js/worker.js)。
--   [Hypernotes](https://wordpress.com/plugins/hypernotes) WordPress プラグイン ([ここからインストール](https://github.com/blocknotes-org/blocknotes/blob/e08535883332be9a45a0c75b750c54a4e17f6748/src/js/index.js#L160)) を使用すると、wp-admin をメモアプリとして使用できます。
--   [iOS ファイルから WordPress の投稿を読み込み](https://github.com/blocknotes-org/blocknotes/blob/e08535883332be9a45a0c75b750c54a4e17f6748/src/js/index.js#L39)、[変更を iOS ファイルとして保存](https://github.com/blocknotes-org/blocknotes/blob/e08535883332be9a45a0c75b750c54a4e17f6748/src/js/save-data.js) するレイヤー。
+- [WordPress ビルド](https://github.com/blocknotes-org/blocknotes/blob/e08535883332be9a45a0c75b750c54a4e17f6748/src/js/wp-6.2.data) (`.data` ファイルとしてパッケージ化されています)。
+- [静的 WordPress アセット](https://github.com/blocknotes-org/blocknotes/tree/e08535883332be9a45a0c75b750c54a4e17f6748/public)。
+- [PHP の WebAssembly ビルド](https://github.com/blocknotes-org/blocknotes/tree/e08535883332be9a45a0c75b750c54a4e17f6748/node_modules/%40php-wasm/web) ([@php-wasm/web](https://npmjs.com/package/@php-wasm/web) 経由)。
+- [PHP と WordPress を実行する Web ワーカー](https://github.com/blocknotes-org/blocknotes/blob/e08535883332be9a45a0c75b750c54a4e17f6748/src/js/worker.js)。
+- [Hypernotes](https://wordpress.com/plugins/hypernotes) WordPress プラグイン ([ここからインストール](https://github.com/blocknotes-org/blocknotes/blob/e08535883332be9a45a0c75b750c54a4e17f6748/src/js/index.js#L160)) を使用すると、wp-admin をメモアプリとして使用できます。
+- [iOS ファイルから WordPress の投稿を読み込み](https://github.com/blocknotes-org/blocknotes/blob/e08535883332be9a45a0c75b750c54a4e17f6748/src/js/index.js#L39)、[変更を iOS ファイルとして保存](https://github.com/blocknotes-org/blocknotes/blob/e08535883332be9a45a0c75b750c54a4e17f6748/src/js/save-data.js) するレイヤー。
 
 <!--
 -   [A WordPress build](https://github.com/blocknotes-org/blocknotes/blob/e08535883332be9a45a0c75b750c54a4e17f6748/src/js/wp-6.2.data) (packaged as a `.data` file).

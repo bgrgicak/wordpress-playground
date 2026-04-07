@@ -1,16 +1,17 @@
 ---
 title: Using Blueprints
 slug: /blueprints/using-blueprints
+description: Discover the different ways to use Blueprints, including via URL fragment, query parameter, bundles, and the JavaScript API.
 ---
 
 # Using Blueprints
 
 You can use Blueprints in one of the following ways:
 
--   By passing them as a URL fragment to the Playground.
--   By loading them from a URL using the `blueprint-url` parameter.
--   By using Blueprint bundles (ZIP files or directories).
--   By using the JavaScript API.
+- By passing them as a URL fragment to the Playground.
+- By loading them from a URL using the `blueprint-url` parameter.
+- By using Blueprint bundles (ZIP files or directories).
+- By using the JavaScript API.
 
 ## URL Fragment
 
@@ -89,7 +90,7 @@ When your Blueprint gets too wieldy, you can load it via the `?blueprint-url` qu
 
 [https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/adamziel/blueprints/trunk/blueprints/latest-gutenberg/blueprint.json](https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/adamziel/blueprints/trunk/blueprints/latest-gutenberg/blueprint.json)
 
-Note that the Blueprint must be publicly accessible and served with [the correct `Access-Control-Allow-Origin` header](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Allow-Origin):
+Note that the Blueprint must be publicly accessible and served with [the correct `Access-Control-Allow-Origin` header](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Access-Control-Allow-Origin):
 
 ```
 Access-Control-Allow-Origin: *

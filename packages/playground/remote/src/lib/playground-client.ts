@@ -9,7 +9,7 @@ import type {
 	PlaygroundWorkerEndpoint,
 	MountDescriptor,
 	WorkerBootOptions,
-} from './worker-thread';
+} from './playground-worker-endpoint';
 
 export interface WebClientMixin extends ProgressReceiver {
 	/**
@@ -75,8 +75,9 @@ export interface WebClientMixin extends ProgressReceiver {
  * The Playground Client interface.
  */
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-export interface PlaygroundClient
-	extends RemoteAPI<PlaygroundWorkerEndpoint & WebClientMixin> {}
+export interface PlaygroundClient extends RemoteAPI<
+	PlaygroundWorkerEndpoint & WebClientMixin
+> {}
 
 /*
  * Assert that PlaygroundClient is a superset of UniversalPHP.

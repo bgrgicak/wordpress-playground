@@ -1,7 +1,8 @@
 ---
-title: Introdução
+title: Contribuindo para o projeto WordPress Playground
 slug: /contributing
 id: introduction
+description: Seu ponto de partida para contribuir com o WordPress Playground. Encontre diretrizes para código, documentação e reporte de bugs.
 ---
 
 <!--
@@ -25,10 +26,10 @@ O WordPress Playground é um projeto de código aberto que acolhe todos os contr
 
 ## Como posso contribuir?
 
--   Código? Veja a [seção de desenvolvedores](/contributing/code).
--   Documentação? Veja a [seção de documentação](/contributing/documentation).
--   Reportando bugs? Abra uma [nova issue](https://github.com/WordPress/wordpress-playground/issues/new) no repositório principal do GitHub, ou no [Playground Tools](https://github.com/WordPress/playground-tools/issues/new).
--   Ideias, designs ou qualquer outra coisa? Abra uma [discussão no GitHub](https://github.com/WordPress/wordpress-playground/discussions), e vamos conversar!
+- Código? Veja a [seção de desenvolvedores](/contributing/code).
+- Documentação? Veja a [seção de documentação](/contributing/documentation).
+- Reportando bugs? Abra uma [nova issue](https://github.com/WordPress/wordpress-playground/issues/new) no repositório principal do GitHub, ou no [Playground Tools](https://github.com/WordPress/playground-tools/issues/new).
+- Ideias, designs ou qualquer outra coisa? Abra uma [discussão no GitHub](https://github.com/WordPress/wordpress-playground/discussions), e vamos conversar!
 
 <!--
 ## Guidelines
@@ -40,9 +41,9 @@ O WordPress Playground é um projeto de código aberto que acolhe todos os contr
 
 ## Diretrizes
 
--   Como em todos os projetos WordPress, queremos garantir um ambiente acolhedor e respeitoso para todos. Por favor, leia o [Código de Conduta](https://make.wordpress.org/handbook/community-code-of-conduct/) da nossa comunidade para saber mais.
--   Contribuidores de código devem revisar os [princípios de codificação](/contributing/coding-standards).
--   Você mantém os direitos autorais sobre qualquer contribuição que fizer. Ao enviar um Pull Request, você concorda em liberar esse código sob a [Licença do WordPress Playground](https://github.com/WordPress/wordpress-playground?tab=GPL-2.0-1-ov-file#readme).
+- Como em todos os projetos WordPress, queremos garantir um ambiente acolhedor e respeitoso para todos. Por favor, leia o [Código de Conduta](https://make.wordpress.org/handbook/community-code-of-conduct/) da nossa comunidade para saber mais.
+- Contribuidores de código devem revisar os [princípios de codificação](/contributing/coding-standards).
+- Você mantém os direitos autorais sobre qualquer contribuição que fizer. Ao enviar um Pull Request, você concorda em liberar esse código sob a [Licença do WordPress Playground](https://github.com/WordPress/wordpress-playground?tab=GPL-2.0-1-ov-file#readme).
 
 <!--
 ## Triaging issues
@@ -85,10 +86,10 @@ As such, please be aware of the implications that your contributions will fall u
 
 Como tal, por favor, esteja ciente das implicações sob as quais suas contribuições cairão:
 
--   Quando você contribui, você concorda em licenciar suas contribuições sob a licença GPLv2 (ou posterior)
--   A licença GPL tem fortes disposições de copyleft que garantem que todas as obras derivadas permaneçam de código aberto e sob os mesmos termos de licença, promovendo assim um ambiente de desenvolvimento colaborativo.
--   A licença GPL incentiva a contribuição de quaisquer mudanças, correções de bugs ou novos recursos de volta ao código original.
--   A licença GPL garante que o projeto permaneça livre e de código aberto, não apenas em termos de custo, mas também com respeito à liberdade de usar, modificar e distribuir o software.
+- Quando você contribui, você concorda em licenciar suas contribuições sob a licença GPLv2 (ou posterior)
+- A licença GPL tem fortes disposições de copyleft que garantem que todas as obras derivadas permaneçam de código aberto e sob os mesmos termos de licença, promovendo assim um ambiente de desenvolvimento colaborativo.
+- A licença GPL incentiva a contribuição de quaisquer mudanças, correções de bugs ou novos recursos de volta ao código original.
+- A licença GPL garante que o projeto permaneça livre e de código aberto, não apenas em termos de custo, mas também com respeito à liberdade de usar, modificar e distribuir o software.
 
 <!--
 If you have any questions about how the above might affect your contributions, please feel free to reach out on WP Slack and the [`meta-playground` channel](https://wordpress.slack.com/archives/C04EWKGDJ0K).
