@@ -1,31 +1,17 @@
-type BufferLike = Uint8Array & {
-	toString(encoding: 'base64'): string;
-};
-
-type BufferConstructorLike = {
-	from(input: string, encoding: 'base64'): BufferLike;
-	from(input: Uint8Array): BufferLike;
-};
-
 export function decodeBase64ToString(base64: string): string {
 	return new TextDecoder().decode(decodeBase64ToUint8Array(base64));
 }
 
 export function decodeBase64ToUint8Array(base64: string): Uint8Array {
 	const normalizedBase64 = base64.replace(/\s+/g, '');
-	if (typeof globalThis.atob !== 'function') {
-		const BufferConstructor = getBufferConstructor();
-		if (!BufferConstructor) {
-			throw new Error(
-				'Base64 decoding is not available in this JavaScript runtime.'
-			);
-		}
-		return new Uint8Array(
-			BufferConstructor.from(normalizedBase64, 'base64')
+	const atob = globalThis.atob;
+	if (typeof atob !== 'function') {
+		throw new Error(
+			'Base64 decoding is not available in this JavaScript runtime.'
 		);
 	}
 
-	const binaryString = globalThis.atob(normalizedBase64);
+	const binaryString = atob(normalizedBase64);
 	const bytes = new Uint8Array(binaryString.length);
 	for (let index = 0; index < binaryString.length; index++) {
 		bytes[index] = binaryString.charCodeAt(index);
@@ -38,14 +24,11 @@ export function encodeStringAsBase64(text: string): string {
 }
 
 export function encodeUint8ArrayAsBase64(bytes: Uint8Array): string {
-	if (typeof globalThis.btoa !== 'function') {
-		const BufferConstructor = getBufferConstructor();
-		if (!BufferConstructor) {
-			throw new Error(
-				'Base64 encoding is not available in this JavaScript runtime.'
-			);
-		}
-		return BufferConstructor.from(bytes).toString('base64');
+	const btoa = globalThis.btoa;
+	if (typeof btoa !== 'function') {
+		throw new Error(
+			'Base64 encoding is not available in this JavaScript runtime.'
+		);
 	}
 
 	const binaryStringChunks: string[] = [];
@@ -55,13 +38,5 @@ export function encodeUint8ArrayAsBase64(bytes: Uint8Array): string {
 			String.fromCodePoint(...bytes.subarray(offset, offset + chunkSize))
 		);
 	}
-	return globalThis.btoa(binaryStringChunks.join(''));
-}
-
-function getBufferConstructor(): BufferConstructorLike | undefined {
-	return (
-		globalThis as typeof globalThis & {
-			Buffer?: BufferConstructorLike;
-		}
-	).Buffer;
+	return btoa(binaryStringChunks.join(''));
 }
