@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
+import { encodeStringAsBase64 } from '@php-wasm/util';
 import type { EventedFilesystem } from '@wp-playground/storage';
-import { encodeStringAsBase64 } from '../base64';
 import { useDebouncedCallback } from './use-debounced-callback';
 
 export interface UseBlueprintUrlHashResult {

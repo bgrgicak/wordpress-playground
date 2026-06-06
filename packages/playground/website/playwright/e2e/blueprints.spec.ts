@@ -1,6 +1,6 @@
 import { test, expect } from '../playground-fixtures';
+import { encodeStringAsBase64 } from '@php-wasm/util';
 import type { Blueprint } from '@wp-playground/blueprints';
-import { encodeStringAsBase64 } from '../../src/lib/base64';
 
 // We can't import the SupportedPHPVersions versions directly from the remote package
 // because of ESModules vs CommonJS incompatibilities. Let's just import the
