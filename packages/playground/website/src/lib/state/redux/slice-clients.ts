@@ -3,6 +3,7 @@ import { createSlice, createEntityAdapter } from '@reduxjs/toolkit';
 import type { SyncProgress } from '@php-wasm/web';
 import type { MountDevice } from '@wp-playground/storage';
 import type { PlaygroundClient } from '@wp-playground/remote';
+import type { CapturedMail } from '../../mail-capture';
 
 export type OpfsSync =
 	| {
@@ -19,6 +20,7 @@ export interface ClientInfo {
 	client: PlaygroundClient;
 	siteSlug: string;
 	url: string;
+	mail: CapturedMail[];
 	opfsMountDescriptor?: {
 		device: MountDevice;
 		mountpoint: string;

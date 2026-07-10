@@ -1042,6 +1042,53 @@ test('should stat the database size without reading the database into JavaScript
 	).toBe(0);
 });
 
+test('should capture WordPress mail in the Mail tab', async ({ website }) => {
+	await website.goto('./?storage=temp');
+
+	await website.page.evaluate(async () => {
+		const playground = (window as any).playground;
+		await playground.run({
+			code: `<?php
+require_once '/wordpress/wp-load.php';
+$sent = wp_mail(
+	'Recipient <recipient@example.com>',
+	'Welcome to Playground',
+	'Hello from Playground!',
+	[
+		'Content-Type: text/plain; charset=UTF-8',
+		'From: Playground <sender@example.com>',
+	]
+);
+if (!$sent) {
+	throw new Exception('wp_mail() failed');
+}
+`,
+		});
+	});
+
+	await website.ensureSiteManagerIsOpen();
+	await website.page.getByRole('tab', { name: 'Mail' }).click();
+
+	const mailPanel = website.page.getByRole('region', { name: 'Mail' });
+	await expect(
+		mailPanel.getByRole('button', { name: /Welcome to Playground/ })
+	).toBeVisible();
+	await expect(
+		mailPanel.getByRole('heading', {
+			name: 'Welcome to Playground',
+			level: 2,
+		})
+	).toBeVisible();
+	await expect(
+		mailPanel.getByText('Hello from Playground!', { exact: true })
+	).toBeVisible();
+	await expect(
+		mailPanel.getByText('Recipient <recipient@example.com>', {
+			exact: true,
+		})
+	).toBeVisible();
+});
+
 test.describe('Database panel', () => {
 	test.beforeEach(async ({ website }) => {
 		await website.goto('./?storage=temp');

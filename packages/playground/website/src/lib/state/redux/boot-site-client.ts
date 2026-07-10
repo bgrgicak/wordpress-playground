@@ -41,6 +41,8 @@ import {
 } from './error-utils';
 import { PHPMYADMIN_INSTALL_PATH } from '@wp-playground/tools';
 import { phpExtensionQueryArgsToExtensionsArray } from '../url/php-extension-query';
+import { subscribeToMail } from '../../mail-capture';
+import type { CapturedMail } from '../../mail-capture';
 
 const PENDING_OPFS_SITE_REMOVAL_RETRY_DELAYS_MS = [700, 1400];
 
@@ -222,6 +224,8 @@ export function bootSiteClient(
 		}
 
 		let playground: PlaygroundClient | undefined = undefined;
+		let capturedMail: CapturedMail[] = [];
+		let clientInfoAdded = false;
 		try {
 			const phpExtensions = phpExtensionQueryArgsToExtensionsArray(
 				site.originalUrlParams?.searchParams?.['php-extension'],
@@ -242,6 +246,24 @@ export function bootSiteClient(
 					}
 					playground = (window as any)['playground'] =
 						playgroundClient;
+					subscribeToMail({
+						client: playgroundClient,
+						siteSlug,
+						signal,
+						onMail: (mail) => {
+							capturedMail = [mail, ...capturedMail].sort(
+								(a, b) => b.receivedAt - a.receivedAt
+							);
+							if (clientInfoAdded) {
+								dispatch(
+									updateClientInfo({
+										siteSlug,
+										changes: { mail: capturedMail },
+									})
+								);
+							}
+						},
+					});
 				},
 				// Log Blueprint events
 				onBlueprintValidated: logBlueprintEvents,
@@ -354,6 +376,7 @@ export function bootSiteClient(
 				siteSlug: site.slug,
 				url: '/',
 				client: connectedPlayground,
+				mail: capturedMail,
 				opfsMountDescriptor: mountDescriptor,
 				opfsSync: mountDescriptorForInitialOpfsSync
 					? {
@@ -363,6 +386,7 @@ export function bootSiteClient(
 					: undefined,
 			})
 		);
+		clientInfoAdded = true;
 		// When metadata says the first OPFS copy is still pending, install
 		// WordPress in MEMFS and copy it into OPFS in the background. Otherwise
 		// the stored files are mounted and boot can only refresh recency metadata.
