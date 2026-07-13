@@ -1,9 +1,10 @@
 import {
-	Button,
-	Card,
-	CardBody,
-	CardHeader,
 	Notice,
+	SelectControl,
+	__experimentalDivider as Divider,
+	__experimentalHeading as Heading,
+	__experimentalText as Text,
+	__experimentalVStack as VStack,
 } from '@wordpress/components';
 import { useState } from 'react';
 import type { CapturedMail } from '../../../lib/mail-capture';
@@ -21,150 +22,115 @@ const EMAIL_PREVIEW_DOCUMENT_PREFIX = `<!doctype html>
 export function SiteMailPanel({ mail }: { mail: CapturedMail[] }) {
 	const [selectedMailId, setSelectedMailId] = useState<string>();
 	const selectedMail =
-		mail.find((message) => message.id === selectedMailId) || mail[0];
-
-	if (!selectedMail) {
-		return (
-			<section className={css.emptyState} aria-label="Mail">
-				<Card elevation={0} size="small">
-					<CardBody>
-						<h2 className={css.emptyStateTitle}>No mail yet</h2>
-						<p className={css.emptyStateDescription}>
-							Messages sent by this Playground will appear here.
-						</p>
-					</CardBody>
-				</Card>
-			</section>
-		);
-	}
+		mail.find(({ id }) => id === selectedMailId) || mail[0];
 
 	return (
-		<section className={css.mailPanel} aria-label="Mail">
-			<section className={css.mailList} aria-label="Received messages">
-				<header className={css.mailListHeader}>
-					<h2>Received</h2>
-					<span>{mail.length}</span>
-				</header>
-				<div role="list">
-					{mail.map((message) => {
-						const isSelected = message.id === selectedMail.id;
-						return (
-							<div role="listitem" key={message.id}>
-								<Button
-									className={css.mailListItem}
-									isPressed={isSelected}
-									onClick={() =>
-										setSelectedMailId(message.id)
-									}
-								>
-									<span className={css.mailListItemContent}>
-										<span
-											className={css.mailListItemSubject}
-										>
-											{message.subject}
-										</span>
-										<span className={css.mailListItemMeta}>
-											<span>
-												{message.from ||
-													'Unknown sender'}
-											</span>
-											<time
-												dateTime={new Date(
-													message.receivedAt
-												).toISOString()}
-											>
-												{formatReceivedTime(
-													message.receivedAt
-												)}
-											</time>
-										</span>
-									</span>
-								</Button>
-							</div>
-						);
-					})}
-				</div>
-			</section>
-			<MailPreview mail={selectedMail} />
+		<section aria-label="Mail">
+			{selectedMail ? (
+				<VStack spacing={4}>
+					<SelectControl
+						label={`Received messages (${mail.length})`}
+						value={selectedMail.id}
+						options={mail.map((message) => ({
+							value: message.id,
+							label: `${message.subject} — ${
+								message.from || 'Unknown sender'
+							} — ${formatReceivedTime(message.receivedAt)}`,
+						}))}
+						onChange={setSelectedMailId}
+						__nextHasNoMarginBottom
+					/>
+					<MailPreview mail={selectedMail} />
+				</VStack>
+			) : (
+				<VStack spacing={2}>
+					<Heading level={2}>No mail yet</Heading>
+					<Text>
+						Messages sent by this Playground will appear here.
+					</Text>
+				</VStack>
+			)}
 		</section>
 	);
 }
 
 function MailPreview({ mail }: { mail: CapturedMail }) {
 	return (
-		<article className={css.mailPreview} aria-label="Selected message">
-			<Card className={css.mailCard} elevation={0} size="small">
-				<CardHeader className={css.mailHeader}>
-					<h2>{mail.subject}</h2>
-					<dl>
-						{mail.from && (
-							<>
-								<dt>From</dt>
-								<dd>{mail.from}</dd>
-							</>
-						)}
-						{mail.to.length > 0 && (
-							<>
-								<dt>To</dt>
-								<dd>{mail.to.join(', ')}</dd>
-							</>
-						)}
-						{mail.cc.length > 0 && (
-							<>
-								<dt>Cc</dt>
-								<dd>{mail.cc.join(', ')}</dd>
-							</>
-						)}
-						<dt>Received</dt>
-						<dd>{formatDate(mail.receivedAt)}</dd>
-						{mail.date && (
-							<>
-								<dt>Sent</dt>
-								<dd>{formatDate(mail.date)}</dd>
-							</>
-						)}
-					</dl>
-				</CardHeader>
-				<CardBody className={css.mailBody}>
-					{mail.parseError ? (
-						<Notice status="error" isDismissible={false}>
-							The message could not be parsed: {mail.parseError}
-						</Notice>
-					) : mail.html ? (
-						<iframe
-							className={css.htmlPreview}
-							title={`Contents of ${mail.subject}`}
-							sandbox=""
-							srcDoc={EMAIL_PREVIEW_DOCUMENT_PREFIX + mail.html}
-						/>
-					) : mail.text ? (
-						<pre>{mail.text}</pre>
-					) : (
-						<p>This message has no body.</p>
+		<VStack spacing={4}>
+			<VStack spacing={2}>
+				<Heading level={2}>{mail.subject}</Heading>
+				<VStack spacing={1}>
+					{mail.from && (
+						<Text>
+							<strong>From:</strong> {mail.from}
+						</Text>
 					)}
-				</CardBody>
-				{mail.attachments.length > 0 && (
-					<CardBody className={css.attachments} isShady>
-						<h3>
+					{mail.to.length > 0 && (
+						<Text>
+							<strong>To:</strong> {mail.to.join(', ')}
+						</Text>
+					)}
+					{mail.cc.length > 0 && (
+						<Text>
+							<strong>Cc:</strong> {mail.cc.join(', ')}
+						</Text>
+					)}
+					<Text>
+						<strong>Received:</strong> {formatDate(mail.receivedAt)}
+					</Text>
+					{mail.date && (
+						<Text>
+							<strong>Sent:</strong> {formatDate(mail.date)}
+						</Text>
+					)}
+				</VStack>
+			</VStack>
+			<Divider />
+			{mail.parseError ? (
+				<Notice status="error" isDismissible={false}>
+					The message could not be parsed: {mail.parseError}
+				</Notice>
+			) : mail.html ? (
+				<iframe
+					className={css.htmlPreview}
+					title={`Contents of ${mail.subject}`}
+					sandbox=""
+					srcDoc={EMAIL_PREVIEW_DOCUMENT_PREFIX + mail.html}
+				/>
+			) : mail.text ? (
+				<pre className={css.textBody}>{mail.text}</pre>
+			) : (
+				<Text>This message has no body.</Text>
+			)}
+			{mail.attachments.length > 0 && (
+				<>
+					<Divider />
+					<VStack spacing={2}>
+						<Heading level={3}>
 							{mail.attachments.length === 1
 								? '1 attachment'
 								: `${mail.attachments.length} attachments`}
-						</h3>
-						<ul>
+						</Heading>
+						<VStack
+							as="ul"
+							spacing={1}
+							className={css.attachmentList}
+						>
 							{mail.attachments.map((attachment, index) => (
-								<li key={`${attachment.filename}-${index}`}>
-									<span>{attachment.filename}</span>
-									<span>
-										{attachment.mimeType} ·{' '}
-										{formatFileSize(attachment.size)}
-									</span>
-								</li>
+								<Text
+									as="li"
+									key={`${attachment.filename}-${index}`}
+								>
+									<strong>{attachment.filename}</strong> —{' '}
+									{attachment.mimeType},{' '}
+									{formatFileSize(attachment.size)}
+								</Text>
 							))}
-						</ul>
-					</CardBody>
-				)}
-			</Card>
-		</article>
+						</VStack>
+					</VStack>
+				</>
+			)}
+		</VStack>
 	);
 }
 
