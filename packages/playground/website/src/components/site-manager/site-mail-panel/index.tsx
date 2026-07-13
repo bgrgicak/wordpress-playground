@@ -229,16 +229,19 @@ function MailPreview({
 						The message could not be parsed: {mail.parseError}
 					</Notice>
 				) : mail.html ? (
-					<iframe
-						ref={htmlPreviewRef}
-						className={css.htmlPreview}
-						title={`Contents of ${mail.subject}`}
-						sandbox="allow-scripts"
-						srcDoc={createEmailPreviewDocument(
-							mail.html,
-							linkMessageChannel
-						)}
-					/>
+					<>
+						{/* A sandboxed srcDoc cannot load Playground resources
+						    through the service worker. The CSP blocks scripts. */}
+						<iframe
+							ref={htmlPreviewRef}
+							className={css.htmlPreview}
+							title={`Contents of ${mail.subject}`}
+							srcDoc={createEmailPreviewDocument(
+								mail.html,
+								linkMessageChannel
+							)}
+						/>
+					</>
 				) : mail.text ? (
 					<pre className={css.textBody}>{mail.text}</pre>
 				) : (
