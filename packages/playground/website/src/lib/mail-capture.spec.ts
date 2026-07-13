@@ -28,7 +28,7 @@ describe('parseMailMessage', () => {
 		expect(mail.text?.trim()).toBe('Hello from Playground!');
 	});
 
-	it('keeps HTML and attachment metadata without attachment contents', async () => {
+	it('keeps HTML and attachment contents for previewing and download', async () => {
 		const mail = await parseMailMessage(
 			[
 				'From: sender@example.com',
@@ -57,6 +57,43 @@ describe('parseMailMessage', () => {
 				filename: 'hello.txt',
 				mimeType: 'text/plain',
 				size: 5,
+				dataUrl: 'data:text/plain;base64,aGVsbG8=',
+			},
+		]);
+	});
+
+	it('embeds related attachments referenced by content ID', async () => {
+		const mail = await parseMailMessage(
+			[
+				'From: sender@example.com',
+				'To: recipient@example.com',
+				'MIME-Version: 1.0',
+				'Content-Type: multipart/related; boundary="related-boundary"',
+				'',
+				'--related-boundary',
+				'Content-Type: text/html; charset=utf-8',
+				'',
+				'<p>Logo: <img src="cid:logo@example.com"></p>',
+				'--related-boundary',
+				'Content-Type: image/png; name="logo.png"',
+				'Content-Disposition: inline; filename="logo.png"',
+				'Content-ID: <logo@example.com>',
+				'Content-Transfer-Encoding: base64',
+				'',
+				'UE5H',
+				'--related-boundary--',
+			].join('\r\n'),
+			{ id: 'mail-3', receivedAt: 789 }
+		);
+
+		expect(mail.html).toContain('src="data:image/png;base64,UE5H"');
+		expect(mail.attachments).toEqual([
+			{
+				filename: 'logo.png',
+				mimeType: 'image/png',
+				size: 3,
+				dataUrl: 'data:image/png;base64,UE5H',
+				contentId: 'logo@example.com',
 			},
 		]);
 	});
