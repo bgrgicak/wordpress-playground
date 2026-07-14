@@ -2,12 +2,12 @@ import {
 	Button,
 	Card,
 	CardBody,
-	CardFooter,
 	CardMedia,
 	Icon,
 	Notice,
 	__experimentalConfirmDialog as ConfirmDialog,
 	__experimentalDivider as Divider,
+	__experimentalGrid as Grid,
 	__experimentalHStack as HStack,
 	__experimentalHeading as Heading,
 	__experimentalItem as Item,
@@ -110,9 +110,6 @@ export function SiteMailPanel({
 						);
 					})}
 				</ItemGroup>
-				<Text as="p" className={css.mailListEnd} variant="muted">
-					No more emails
-				</Text>
 			</aside>
 			<MailPreview
 				mail={selectedMail}
@@ -194,28 +191,39 @@ function MailPreview({
 			>
 				<VStack spacing={2}>
 					<Heading level={2}>{mail.subject}</Heading>
-					<VStack spacing={1}>
-						{mail.from && (
-							<Text>
-								<strong>From:</strong> {mail.from}
-							</Text>
-						)}
-						{mail.to.length > 0 && (
-							<Text>
-								<strong>To:</strong> {mail.to.join(', ')}
-							</Text>
-						)}
-						{mail.cc.length > 0 && (
-							<Text>
-								<strong>Cc:</strong> {mail.cc.join(', ')}
-							</Text>
-						)}
-						{mail.date && (
-							<Text>
-								<strong>Sent:</strong> {formatDate(mail.date)}
-							</Text>
-						)}
-					</VStack>
+					<div className={css.mailMetadata}>
+						<VStack spacing={1}>
+							{mail.from && (
+								<Text>
+									<strong>From:</strong> {mail.from}
+								</Text>
+							)}
+							{mail.to.length > 0 && (
+								<Text>
+									<strong>To:</strong> {mail.to.join(', ')}
+								</Text>
+							)}
+							{mail.cc.length > 0 && (
+								<Text>
+									<strong>Cc:</strong> {mail.cc.join(', ')}
+								</Text>
+							)}
+						</VStack>
+						<VStack spacing={1}>
+							{mail.date && (
+								<Text>
+									<strong>Sent:</strong>{' '}
+									{formatDate(mail.date)}
+								</Text>
+							)}
+							{mail.attachments.length > 0 && (
+								<Text>
+									<strong>Attachments:</strong>{' '}
+									{mail.attachments.length}
+								</Text>
+							)}
+						</VStack>
+					</div>
 				</VStack>
 				<Divider />
 				{mail.parseError ? (
@@ -228,7 +236,11 @@ function MailPreview({
 						    through the service worker. The CSP blocks scripts. */}
 						<iframe
 							ref={htmlPreviewRef}
-							className={css.htmlPreview}
+							className={
+								mail.attachments.length > 0
+									? `${css.htmlPreview} ${css.htmlPreviewWithAttachments}`
+									: css.htmlPreview
+							}
 							title={`Contents of ${mail.subject}`}
 							srcDoc={createEmailPreviewDocument(
 								mail.html,
@@ -250,11 +262,11 @@ function MailPreview({
 									? '1 attachment'
 									: `${mail.attachments.length} attachments`}
 							</Heading>
-							<HStack
+							<Grid
 								as="ul"
 								alignment="stretch"
-								justify="flex-start"
-								spacing={3}
+								gap={3}
+								templateColumns="repeat(auto-fit, minmax(min(100%, 180px), 1fr))"
 								className={css.attachmentList}
 								aria-label="Attachments"
 							>
@@ -271,9 +283,44 @@ function MailPreview({
 											<CardMedia
 												className={css.attachmentMedia}
 											>
-												<AttachmentPreview
-													attachment={attachment}
-												/>
+												<div
+													className={
+														css.attachmentPreview
+													}
+												>
+													<AttachmentPreview
+														attachment={attachment}
+													/>
+												</div>
+												<VStack
+													className={
+														css.attachmentActions
+													}
+													spacing={1}
+													justify="center"
+												>
+													<Text variant="muted">
+														{formatFileSize(
+															attachment.size
+														)}
+													</Text>
+													<Button
+														className={
+															css.attachmentDownload
+														}
+														variant="secondary"
+														size="compact"
+														icon={download}
+														href={
+															attachment.dataUrl
+														}
+														download={
+															attachment.filename
+														}
+														label={`Download ${attachment.filename}`}
+														showTooltip
+													/>
+												</VStack>
 											</CardMedia>
 											<CardBody
 												className={
@@ -281,58 +328,22 @@ function MailPreview({
 												}
 												size="xSmall"
 											>
-												<VStack spacing={0}>
-													<Text
-														className={
-															css.attachmentFilename
-														}
-														weight={600}
-														truncate
-														numberOfLines={2}
-														title={
-															attachment.filename
-														}
-													>
-														{attachment.filename}
-													</Text>
-													<Text
-														className={
-															css.attachmentMetadata
-														}
-														variant="muted"
-													>
-														{attachment.mimeType},{' '}
-														{formatFileSize(
-															attachment.size
-														)}
-													</Text>
-												</VStack>
-											</CardBody>
-											<CardFooter
-												className={css.attachmentFooter}
-												justify="flex-start"
-												size="xSmall"
-											>
-												<Button
+												<Text
 													className={
-														css.attachmentDownload
+														css.attachmentFilename
 													}
-													variant="tertiary"
-													size="small"
-													icon={download}
-													href={attachment.dataUrl}
-													download={
-														attachment.filename
-													}
-													aria-label={`Download ${attachment.filename}`}
+													weight={600}
+													truncate
+													numberOfLines={1}
+													title={attachment.filename}
 												>
-													Download
-												</Button>
-											</CardFooter>
+													{attachment.filename}
+												</Text>
+											</CardBody>
 										</Card>
 									</li>
 								))}
-							</HStack>
+							</Grid>
 						</VStack>
 					</>
 				)}

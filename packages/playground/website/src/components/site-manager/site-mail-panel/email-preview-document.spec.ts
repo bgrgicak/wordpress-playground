@@ -21,4 +21,13 @@ describe('createEmailPreviewDocument', () => {
 			'<script>document.body.textContent = "unsafe";</script>'
 		);
 	});
+
+	it('leaves scrolling to the parent email preview', () => {
+		const document = createEmailPreviewDocument(
+			'<p>Message</p>',
+			'channel'
+		);
+
+		expect(document).toContain('html { overflow: hidden !important; }');
+	});
 });

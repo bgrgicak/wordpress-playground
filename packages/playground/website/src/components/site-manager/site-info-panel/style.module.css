@@ -49,6 +49,7 @@
 }
 
 .mail-tab {
+	container-type: inline-size;
 	overflow: hidden;
 }
 

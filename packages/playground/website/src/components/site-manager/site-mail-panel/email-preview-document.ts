@@ -14,6 +14,7 @@ export function createEmailPreviewDocument(
 <meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src http: https: data: blob:; media-src http: https: data: blob:; style-src 'unsafe-inline' http: https: data:; font-src http: https: data: blob:; script-src 'sha256-${EMAIL_LINK_RELAY_SCRIPT_HASH}'; form-action 'none'; base-uri 'none'">
 <style>
+	html { overflow: hidden !important; }
 	body { color: #1e1e1e; font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; overflow-wrap: anywhere; }
 	img { height: auto; max-width: 100%; }
 	pre { white-space: pre-wrap; }
