@@ -12,7 +12,6 @@ export interface CapturedMailAttachment {
 
 export interface CapturedMail {
 	id: string;
-	receivedAt: number;
 	from?: string;
 	to: string[];
 	cc: string[];
@@ -40,18 +39,17 @@ export function subscribeToMail({
 	}
 
 	let nextMessageId = 0;
-	const handleMailReceived = async (event: unknown) => {
-		if (!isMailReceivedEvent(event)) {
+	const handleMailSent = async (event: unknown) => {
+		if (signal.aborted || !isMailSentEvent(event)) {
 			return;
 		}
 
-		const receivedAt = Date.now();
-		const id = `${siteSlug}-${receivedAt}-${nextMessageId++}`;
+		const id = `${siteSlug}-${nextMessageId++}`;
 		let mail: CapturedMail;
 		try {
-			mail = await parseMailMessage(event.message, { id, receivedAt });
+			mail = await parseMailMessage(event.message, { id });
 		} catch (error) {
-			mail = createFailedMail(id, receivedAt, error);
+			mail = createFailedMail(id, error);
 		}
 
 		if (!signal.aborted) {
@@ -59,22 +57,12 @@ export function subscribeToMail({
 		}
 	};
 
-	const removeListener = client.addEventListener(
-		'email.received',
-		handleMailReceived
-	);
-	signal.addEventListener(
-		'abort',
-		() => {
-			void removeListener.then((remove) => remove());
-		},
-		{ once: true }
-	);
+	void client.addEventListener('email.sent', handleMailSent);
 }
 
 export async function parseMailMessage(
 	message: string,
-	{ id, receivedAt }: Pick<CapturedMail, 'id' | 'receivedAt'>
+	{ id }: Pick<CapturedMail, 'id'>
 ): Promise<CapturedMail> {
 	const parsed = await PostalMime.parse(message, {
 		attachmentEncoding: 'base64',
@@ -83,7 +71,6 @@ export async function parseMailMessage(
 
 	return {
 		id,
-		receivedAt,
 		from: parsed.from ? formatAddress(parsed.from) : undefined,
 		to: formatAddressList(parsed.to),
 		cc: formatAddressList(parsed.cc),
@@ -97,25 +84,20 @@ export async function parseMailMessage(
 	};
 }
 
-function isMailReceivedEvent(
+function isMailSentEvent(
 	event: unknown
-): event is { type: 'email.received'; message: string } {
+): event is { type: 'email.sent'; message: string } {
 	return (
 		typeof event === 'object' &&
 		event !== null &&
-		(event as { type?: unknown }).type === 'email.received' &&
+		(event as { type?: unknown }).type === 'email.sent' &&
 		typeof (event as { message?: unknown }).message === 'string'
 	);
 }
 
-function createFailedMail(
-	id: string,
-	receivedAt: number,
-	error: unknown
-): CapturedMail {
+function createFailedMail(id: string, error: unknown): CapturedMail {
 	return {
 		id,
-		receivedAt,
 		to: [],
 		cc: [],
 		subject: 'Unable to parse message',

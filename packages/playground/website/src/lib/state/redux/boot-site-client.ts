@@ -251,9 +251,7 @@ export function bootSiteClient(
 						siteSlug,
 						signal,
 						onMail: (mail) => {
-							capturedMail = [mail, ...capturedMail].sort(
-								(a, b) => b.receivedAt - a.receivedAt
-							);
+							capturedMail = [mail, ...capturedMail];
 							if (clientInfoAdded) {
 								dispatch(
 									updateClientInfo({

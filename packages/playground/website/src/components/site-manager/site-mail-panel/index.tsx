@@ -69,10 +69,10 @@ export function SiteMailPanel({
 
 	return (
 		<section className={css.mailPanel} aria-label="Email">
-			<aside className={css.mailList} aria-label="Received emails">
+			<aside className={css.mailList} aria-label="Sent emails">
 				<HStack className={css.mailListHeader}>
 					<Text as="h2" weight={600}>
-						Received
+						Sent
 					</Text>
 					<Text variant="muted">{mail.length}</Text>
 				</HStack>
@@ -95,17 +95,15 @@ export function SiteMailPanel({
 										<Text variant="muted" truncate>
 											{message.from || 'Unknown sender'}
 										</Text>
-										<Text
-											as="time"
-											dateTime={new Date(
-												message.receivedAt
-											).toISOString()}
-											variant="muted"
-										>
-											{formatReceivedTime(
-												message.receivedAt
-											)}
-										</Text>
+										{message.date && (
+											<Text
+												as="time"
+												dateTime={message.date}
+												variant="muted"
+											>
+												{formatSentTime(message.date)}
+											</Text>
+										)}
 									</HStack>
 								</VStack>
 							</Item>
@@ -212,10 +210,6 @@ function MailPreview({
 								<strong>Cc:</strong> {mail.cc.join(', ')}
 							</Text>
 						)}
-						<Text>
-							<strong>Received:</strong>{' '}
-							{formatDate(mail.receivedAt)}
-						</Text>
 						{mail.date && (
 							<Text>
 								<strong>Sent:</strong> {formatDate(mail.date)}
@@ -430,11 +424,15 @@ function AttachmentPreview({
 	);
 }
 
-function formatReceivedTime(timestamp: number): string {
+function formatSentTime(date: string): string {
+	const parsedDate = new Date(date);
+	if (Number.isNaN(parsedDate.getTime())) {
+		return date;
+	}
 	return new Intl.DateTimeFormat(undefined, {
 		hour: 'numeric',
 		minute: '2-digit',
-	}).format(timestamp);
+	}).format(parsedDate);
 }
 
 function formatDate(value: string | number): string {

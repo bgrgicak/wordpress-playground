@@ -14,12 +14,11 @@ describe('parseMailMessage', () => {
 				'',
 				'Hello from Playground!',
 			].join('\r\n'),
-			{ id: 'mail-1', receivedAt: 123 }
+			{ id: 'mail-1' }
 		);
 
 		expect(mail).toMatchObject({
 			id: 'mail-1',
-			receivedAt: 123,
 			from: 'Playground <sender@example.com>',
 			to: ['Recipient <recipient@example.com>'],
 			cc: ['copy@example.com'],
@@ -48,7 +47,7 @@ describe('parseMailMessage', () => {
 				'aGVsbG8=',
 				'--mail-boundary--',
 			].join('\r\n'),
-			{ id: 'mail-2', receivedAt: 456 }
+			{ id: 'mail-2' }
 		);
 
 		expect(mail.html).toContain('<strong>there</strong>');
@@ -83,7 +82,7 @@ describe('parseMailMessage', () => {
 				'UE5H',
 				'--related-boundary--',
 			].join('\r\n'),
-			{ id: 'mail-3', receivedAt: 789 }
+			{ id: 'mail-3' }
 		);
 
 		expect(mail.html).toContain('src="data:image/png;base64,UE5H"');
