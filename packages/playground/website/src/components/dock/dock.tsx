@@ -213,13 +213,13 @@ export function Dock({
 	const paneCopy = PANE_COPY[section];
 	const paneTitle = paneCopy.title;
 	const isMobile = useIsMobileDock();
-	const isEditorSection = section === 'blueprint' || section === 'files';
-	const isEditorSizedSection = isEditorSection || section === 'mail';
+	const isEditorSection =
+		section === 'blueprint' || section === 'files' || section === 'mail';
 	const isFixedHeightSection =
 		section === 'new' ||
 		section === 'mail' ||
 		(section === 'share' && shareExportOpen);
-	const usesStablePaneHeight = isFixedHeightSection && !isEditorSizedSection;
+	const usesStablePaneHeight = isFixedHeightSection && !isEditorSection;
 	const showSharedHeader = !isEditorSection;
 	const siteSettingsVisible = dockPaneIsOpen && section === 'settings';
 	const playgroundTitle =
@@ -975,7 +975,7 @@ export function Dock({
 		dockSize,
 		dockCenter,
 		viewportSize,
-		isWideSection: isEditorSizedSection,
+		isWideSection: isEditorSection,
 		isFixedHeightSection: usesStablePaneHeight,
 		isPlaygroundsSection: section === 'playgrounds',
 	});
@@ -989,7 +989,7 @@ export function Dock({
 		paneHeight,
 		toastHeight: operationToastHeight,
 		paneOpen: dockPaneIsOpen,
-		isWideSection: isEditorSizedSection,
+		isWideSection: isEditorSection,
 	});
 
 	return (
@@ -1106,7 +1106,6 @@ export function Dock({
 						[css.hostPaneHidden]:
 							!dockPaneIsOpen && paneExitComplete,
 						[css.paneSave]: section === 'save',
-						[css.paneEditorSized]: section === 'mail',
 					})}
 					style={paneStyle}
 					isEditor={isEditorSection}
