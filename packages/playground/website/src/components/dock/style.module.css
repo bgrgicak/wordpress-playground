@@ -260,15 +260,19 @@
 	z-index: 40;
 }
 
+.pane-editor-sized,
+.pane-editor {
+	height: min(780px, calc(100dvh - 148px));
+	width: min(1120px, calc(100vw - 40px));
+}
+
 .pane-editor {
 	/* Editor panes drop the pane header and carry their title in the
 	   file-browser bar, so the body fills the whole pane. */
 	display: grid;
 	grid-template-rows: minmax(0, 1fr);
-	height: min(780px, calc(100dvh - 148px));
 	max-height: none;
 	overflow: hidden;
-	width: min(1120px, calc(100vw - 40px));
 }
 
 /* The New pane runs at a fixed height (set inline) so its tab strip stays put

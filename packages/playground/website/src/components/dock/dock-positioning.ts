@@ -16,7 +16,7 @@ export function getDockPaneStyle({
 	dockSize,
 	dockCenter,
 	viewportSize,
-	isEditorSection,
+	isWideSection,
 	isFixedHeightSection,
 	isPlaygroundsSection,
 }: {
@@ -24,7 +24,7 @@ export function getDockPaneStyle({
 	dockSize: Size;
 	dockCenter: number | null;
 	viewportSize: Size;
-	isEditorSection: boolean;
+	isWideSection: boolean;
 	isFixedHeightSection: boolean;
 	isPlaygroundsSection: boolean;
 }): CSSProperties | undefined {
@@ -41,7 +41,7 @@ export function getDockPaneStyle({
 	const center = getDockPaneCenter({
 		dockCenter,
 		viewportWidth: viewportSize.width,
-		isEditorSection,
+		isWideSection,
 	});
 	const availableHeight = Math.max(
 		DOCK_PANE_MIN_HEIGHT,
@@ -70,7 +70,7 @@ export function getDockOperationToastStyle({
 	paneHeight,
 	toastHeight,
 	paneOpen,
-	isEditorSection,
+	isWideSection,
 }: {
 	isMobile: boolean;
 	dockSize: Size;
@@ -81,7 +81,7 @@ export function getDockOperationToastStyle({
 	paneHeight: number;
 	toastHeight: number;
 	paneOpen: boolean;
-	isEditorSection: boolean;
+	isWideSection: boolean;
 }): CSSProperties | undefined {
 	if (!dockSize.height) {
 		return undefined;
@@ -94,7 +94,7 @@ export function getDockOperationToastStyle({
 		visibleDockHeight +
 		DOCK_PANE_GAP +
 		(!isMobile && paneOpen ? paneHeight + DOCK_PANE_GAP : 0);
-	// Editor panes and mobile panes can consume all available space. Keep the
+	// Wide panes and mobile panes can consume all available space. Keep the
 	// toast reachable at the viewport edge instead of placing it off-screen.
 	const maxBottom = Math.max(
 		DOCK_PANE_GAP,
@@ -110,7 +110,7 @@ export function getDockOperationToastStyle({
 		: getDockPaneCenter({
 				dockCenter,
 				viewportWidth: viewportSize.width,
-				isEditorSection,
+				isWideSection,
 			});
 	const minCenter = halfToastWidth + DOCK_PANE_GAP;
 	const maxCenter = viewportSize.width - halfToastWidth - DOCK_PANE_GAP;
@@ -129,15 +129,15 @@ export function getDockOperationToastStyle({
 export function getDockPaneCenter({
 	dockCenter,
 	viewportWidth,
-	isEditorSection,
+	isWideSection,
 }: {
 	dockCenter: number | null;
 	viewportWidth: number;
-	isEditorSection: boolean;
+	isWideSection: boolean;
 }) {
 	const desiredCenter = dockCenter ?? viewportWidth / 2;
 	const halfPaneWidth = Math.min(
-		isEditorSection ? 560 : 300,
+		isWideSection ? 560 : 300,
 		(viewportWidth - 2 * DOCK_DRAG_EDGE) / 2
 	);
 	return Math.min(

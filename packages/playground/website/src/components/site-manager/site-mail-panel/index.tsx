@@ -14,7 +14,7 @@ import {
 	__experimentalText as Text,
 	__experimentalVStack as VStack,
 } from '@wordpress/components';
-import { download, file } from '@wordpress/icons';
+import { download, page } from '@wordpress/icons';
 import { useEffect, useRef, useState } from 'react';
 import type {
 	CapturedMail,
@@ -361,7 +361,7 @@ function AttachmentPreview({
 
 	return (
 		<div className={css.attachmentPlaceholder} aria-hidden="true">
-			<Icon icon={file} size={32} />
+			<Icon icon={page} size={32} />
 		</div>
 	);
 }
