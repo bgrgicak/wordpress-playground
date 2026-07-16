@@ -18,13 +18,23 @@ import type { WebClientMixin } from './playground-client';
 import type { ProgressBarOptions } from './progress-bar';
 import ProgressBar from './progress-bar';
 
-type PHPRemoteApi = WebClientMixin & Pick<PlaygroundWorkerEndpoint, 'cli'>;
+type PHPRemoteApi = WebClientMixin &
+	Pick<PlaygroundWorkerEndpoint, 'cli'> & {
+		addEventListener: (
+			...args: Parameters<PlaygroundWorkerEndpoint['addEventListener']>
+		) => Promise<ReturnType<PlaygroundWorkerEndpoint['addEventListener']>>;
+		removeEventListener: (
+			...args: Parameters<PlaygroundWorkerEndpoint['removeEventListener']>
+		) => Promise<
+			ReturnType<PlaygroundWorkerEndpoint['removeEventListener']>
+		>;
+	};
 
 // @ts-ignore
 import serviceWorkerPath from '../../service-worker.ts?worker&url';
 import type { FilesystemOperation } from '@php-wasm/fs-journal';
 import { logger } from '@php-wasm/logger';
-import { PhpWasmError } from '@php-wasm/util';
+import { phpEventStdinTransfer, PhpWasmError } from '@php-wasm/util';
 import { responseTo } from '@php-wasm/web-service-worker';
 
 // @ts-ignore
@@ -148,7 +158,28 @@ export async function bootPlaygroundRemote() {
 			return phpWorkerApi.replayFSJournal(events);
 		},
 		async addEventListener(event, listener) {
-			return await phpWorkerApi.addEventListener(event, listener);
+			const removeListener = await phpWorkerApi.addEventListener(
+				event,
+				(phpEvent) => {
+					if (
+						phpEvent.type === 'sendmail.spawned' &&
+						'stdin' in phpEvent &&
+						typeof phpEvent.stdin === 'object' &&
+						phpEvent.stdin !== null &&
+						typeof phpEvent.stdin.getReader === 'function'
+					) {
+						listener({
+							...phpEvent,
+							[phpEventStdinTransfer]: true,
+						});
+						return;
+					}
+					listener(phpEvent);
+				}
+			);
+			return () => {
+				void removeListener();
+			};
 		},
 		async removeEventListener(event, listener) {
 			return await phpWorkerApi.removeEventListener(event, listener);

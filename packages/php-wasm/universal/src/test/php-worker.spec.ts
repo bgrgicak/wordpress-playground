@@ -48,6 +48,10 @@ class TestEndpoint extends PHPWorker {
 		this.registerWorkerListeners(php);
 	}
 
+	attachPhpEvents(php: PHP, eventType: string | '*' = '*') {
+		this.registerWorkerEventListeners(php, eventType);
+	}
+
 	emitEvent(event: PhpEvent) {
 		this.dispatchEvent(event);
 	}
@@ -142,6 +146,81 @@ describe('PlaygroundWorkerEndpoint', () => {
 			'*',
 			expect.any(Function)
 		);
+	});
+
+	test('registers forwarding listeners once per PHP instance', async () => {
+		const endpoint = new TestEndpoint();
+		const php = createMockPHP();
+		const received: unknown[] = [];
+
+		endpoint.addEventListener('worker.ready', (event) => {
+			received.push(event);
+		});
+		endpoint.attachPhp(php as unknown as PHP);
+		endpoint.attachPhp(php as unknown as PHP);
+
+		await php.emitEvent({ type: 'worker.ready' });
+
+		expect(received).toHaveLength(1);
+		expect(php.addEventListener).toHaveBeenCalledTimes(1);
+		expect(php.onMessage).toHaveBeenCalledTimes(1);
+	});
+
+	test('can forward one event type without message forwarding', async () => {
+		const endpoint = new TestEndpoint();
+		const php = createMockPHP();
+		const received: unknown[] = [];
+
+		endpoint.addEventListener('sendmail.spawned', (event) => {
+			received.push(event);
+		});
+		endpoint.addEventListener('filesystem.write', (event) => {
+			received.push(event);
+		});
+		endpoint.attachPhpEvents(php as unknown as PHP, 'sendmail.spawned');
+		await php.emitEvent({ type: 'filesystem.write' });
+		await php.emitEvent({ type: 'sendmail.spawned' });
+
+		expect(received).toEqual([
+			expect.objectContaining({ type: 'sendmail.spawned' }),
+		]);
+		expect(php.addEventListener).toHaveBeenCalledTimes(1);
+		expect(php.onMessage).not.toHaveBeenCalled();
+	});
+
+	test('does not duplicate events when upgrading to full forwarding', async () => {
+		const endpoint = new TestEndpoint();
+		const php = createMockPHP();
+		const received: unknown[] = [];
+
+		endpoint.addEventListener('sendmail.spawned', (event) => {
+			received.push(event);
+		});
+		endpoint.attachPhpEvents(php as unknown as PHP, 'sendmail.spawned');
+		endpoint.attachPhp(php as unknown as PHP);
+		await php.emitEvent({ type: 'sendmail.spawned' });
+
+		expect(received).toHaveLength(1);
+		expect(php.addEventListener).toHaveBeenCalledTimes(1);
+		expect(php.onMessage).toHaveBeenCalledTimes(1);
+	});
+
+	test('returns a function that removes an event listener', async () => {
+		const endpoint = new TestEndpoint();
+		const php = createMockPHP();
+		const received: unknown[] = [];
+		const removeListener = endpoint.addEventListener(
+			'worker.ready',
+			(event) => {
+				received.push(event);
+			}
+		);
+		endpoint.attachPhp(php as unknown as PHP);
+
+		removeListener();
+		await php.emitEvent({ type: 'worker.ready' });
+
+		expect(received).toEqual([]);
 	});
 
 	test('recovers request handler from the primary PHP instance', async () => {

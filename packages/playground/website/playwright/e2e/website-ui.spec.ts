@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises';
 import { test, expect } from '../playground-fixtures.ts';
 import type { Blueprint } from '@wp-playground/blueprints';
 import type { Page } from '@playwright/test';
@@ -960,6 +961,7 @@ test('should make every Dock tool reachable on mobile', async ({ website }) => {
 		['Database', 'Database pane'],
 		['Files', 'Files pane'],
 		['Logs', 'Logs pane'],
+		['Email', 'Email pane'],
 		['Export', 'Export pane'],
 	] as const;
 
@@ -1042,51 +1044,184 @@ test('should stat the database size without reading the database into JavaScript
 	).toBe(0);
 });
 
-test('should capture WordPress mail in the Mail tab', async ({ website }) => {
-	await website.goto('./?storage=temp');
+test('should capture and interact with an email sent by WordPress', async ({
+	context,
+	website,
+	wordpress,
+}) => {
+	const subject = 'Email integration test';
+	const attachmentFilename = 'email-e2e.txt';
+	const attachmentContents = 'Attachment contents';
+	const externalUrl = 'https://example.test/from-email';
+	const mailPanel = website.page.getByRole('region', { name: 'Email' });
+	const htmlPreview = mailPanel.getByTitle(`Contents of ${subject}`);
+	const previewDocument = htmlPreview.contentFrame();
 
-	await website.page.evaluate(async () => {
-		const playground = (window as any).playground;
-		await playground.run({
-			code: `<?php
-require_once '/wordpress/wp-load.php';
-$sent = wp_mail(
-	'Recipient <recipient@example.com>',
-	'Welcome to Playground',
-	'Hello from Playground!',
-	[
-		'Content-Type: text/plain; charset=UTF-8',
-		'From: Playground <sender@example.com>',
-	]
-);
-if (!$sent) {
-	throw new Exception('wp_mail() failed');
-}
-`,
-		});
+	await test.step('send one email from a WordPress HTTP request', async () => {
+		await context.route(externalUrl, (route) =>
+			route.fulfill({
+				contentType: 'text/html',
+				body:
+					'<p>External email link</p>' +
+					'<script>document.body.dataset.scripts = "enabled";</script>',
+			})
+		);
+		await website.goto('./?storage=temp');
+		await expect(wordpress.locator('body')).toContainText('Hello world!');
+
+		await website.page.evaluate(
+			async ({ attachmentContents, externalUrl, subject }) => {
+				const plugin = `<?php
+add_action('template_redirect', function() {
+	if (!isset($_GET['playground-email-e2e'])) {
+		return;
+	}
+
+	$attachment = '/tmp/email-e2e.txt';
+	file_put_contents($attachment, '${attachmentContents}');
+	file_put_contents(
+		ABSPATH . 'email-e2e.png',
+		base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==')
+	);
+	add_filter('wp_mail_content_type', function() {
+		return 'text/html';
+	});
+	$message =
+		'<p id="email-body">Message body</p>' .
+		'<p id="script-status">Scripts blocked</p>' .
+		'<script>document.getElementById("script-status").textContent = "Scripts ran";</script>' .
+		'<img src="' . esc_url(home_url('/email-e2e.png')) . '" alt="Playground email image">' .
+		'<a href="${externalUrl}">Open third-party site</a>';
+	$sent = wp_mail(
+		'recipient@example.com',
+		'${subject}',
+		$message,
+		array(
+			'From: Test Sender <sender@example.com>',
+			'Cc: Copy Recipient <copy@example.com>',
+		),
+		array($attachment)
+	);
+	unlink($attachment);
+	if (!$sent) {
+		wp_die('Test email failed');
+	}
+	wp_die('Test email sent');
+});
+`;
+				const playground = (window as any).playground;
+				const muPluginsPath = '/wordpress/wp-content/mu-plugins';
+				if (!(await playground.fileExists(muPluginsPath))) {
+					await playground.mkdir(muPluginsPath);
+				}
+				await playground.writeFile(
+					'/wordpress/wp-content/mu-plugins/email-e2e.php',
+					plugin
+				);
+			},
+			{ attachmentContents, externalUrl, subject }
+		);
+
+		const addressBar = website.page.getByLabel(
+			/URL to visit in the WordPress site/
+		);
+		await addressBar.fill('/?playground-email-e2e=1');
+		await addressBar.press('Enter');
+		await expect(wordpress.locator('body')).toContainText(
+			'Test email sent'
+		);
 	});
 
-	await website.ensureSiteManagerIsOpen();
-	await website.page.getByRole('tab', { name: 'Mail' }).click();
+	await test.step('show the captured message and its contents', async () => {
+		await website.openDockPane('Email');
 
-	const mailPanel = website.page.getByRole('region', { name: 'Mail' });
-	await expect(
-		mailPanel.getByRole('button', { name: /Welcome to Playground/ })
-	).toBeVisible();
-	await expect(
-		mailPanel.getByRole('heading', {
-			name: 'Welcome to Playground',
-			level: 2,
-		})
-	).toBeVisible();
-	await expect(
-		mailPanel.getByText('Hello from Playground!', { exact: true })
-	).toBeVisible();
-	await expect(
-		mailPanel.getByText('Recipient <recipient@example.com>', {
-			exact: true,
-		})
-	).toBeVisible();
+		const messages = mailPanel
+			.getByRole('complementary', { name: 'Sent emails' })
+			.getByRole('button');
+		await expect(messages).toHaveCount(1);
+		await expect(messages).toContainText(subject);
+		await expect(
+			mailPanel.getByRole('heading', { name: subject, level: 2 })
+		).toBeVisible();
+		await expect(mailPanel).toContainText('sender@example.com');
+		await expect(mailPanel).toContainText('recipient@example.com');
+		await expect(mailPanel).toContainText('copy@example.com');
+		await expect(htmlPreview).toHaveAttribute(
+			'sandbox',
+			'allow-same-origin allow-popups allow-popups-to-escape-sandbox'
+		);
+		await expect(previewDocument.locator('base')).toHaveAttribute(
+			'target',
+			'_blank'
+		);
+		await expect(previewDocument.locator('#email-body')).toHaveText(
+			'Message body'
+		);
+		await expect(previewDocument.locator('#script-status')).toHaveText(
+			'Scripts blocked'
+		);
+		await expect
+			.poll(() =>
+				previewDocument
+					.getByAltText('Playground email image')
+					.evaluate(
+						(image: HTMLImageElement) =>
+							image.complete && image.naturalWidth > 0
+					)
+			)
+			.toBe(true);
+	});
+
+	await test.step('download the attachment', async () => {
+		const attachment = mailPanel
+			.getByRole('list', { name: 'Attachments' })
+			.getByRole('listitem')
+			.filter({ hasText: attachmentFilename });
+		const attachmentDownload = attachment.getByRole('link', {
+			name: `Download ${attachmentFilename}`,
+		});
+		await attachment.hover();
+		const attachmentSize = attachment.getByText(
+			`Size: ${attachmentContents.length} B`
+		);
+		await expect(attachmentSize).toBeVisible();
+		await expect(attachmentSize).toHaveCSS('font-size', '12px');
+		await expect(attachmentDownload).toContainText('Download');
+		await expect(attachmentDownload).toHaveClass(/is-link/);
+		await expect(attachmentDownload).toHaveCSS('font-size', '13px');
+		await expect(attachmentDownload.locator('svg')).toHaveAttribute(
+			'width',
+			'16'
+		);
+		await expect(attachmentDownload).toHaveAttribute(
+			'download',
+			attachmentFilename
+		);
+		const downloadPromise = website.page.waitForEvent('download');
+		await attachmentDownload.click();
+		const download = await downloadPromise;
+		expect(download.suggestedFilename()).toBe(attachmentFilename);
+		const downloadPath = await download.path();
+		if (!downloadPath) {
+			throw new Error('Downloaded attachment has no local path');
+		}
+		expect(await readFile(downloadPath, 'utf8')).toBe(attachmentContents);
+	});
+
+	await test.step('open an external link in a new tab', async () => {
+		const popupPromise = context.waitForEvent('page');
+		await previewDocument
+			.getByRole('link', { name: 'Open third-party site' })
+			.click();
+		const popup = await popupPromise;
+		await popup.waitForURL(externalUrl);
+		await expect(popup.getByText('External email link')).toBeVisible();
+		await expect(popup.locator('body')).toHaveAttribute(
+			'data-scripts',
+			'enabled'
+		);
+		await popup.close();
+	});
 });
 
 test.describe('Database panel', () => {

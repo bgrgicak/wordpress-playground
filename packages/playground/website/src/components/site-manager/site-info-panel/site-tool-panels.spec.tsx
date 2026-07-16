@@ -45,6 +45,10 @@ vi.mock('../../log-modal', () => ({
 	SiteLogs: () => <div data-testid="logs">Site logs</div>,
 }));
 
+vi.mock('../site-mail-panel', () => ({
+	SiteMailPanel: () => <div data-testid="mail">Captured email</div>,
+}));
+
 vi.mock('../../offline-notice', () => ({
 	OfflineNotice: () => <div>Offline</div>,
 }));
@@ -94,7 +98,7 @@ describe('SiteToolPanels', () => {
 
 		const database = findTool('database');
 		expect(database.closest('[hidden]')).toBeNull();
-		for (const name of ['settings', 'files', 'blueprint', 'logs']) {
+		for (const name of ['settings', 'files', 'blueprint', 'logs', 'mail']) {
 			expect(findOptionalTool(name)).toBeNull();
 		}
 
@@ -131,6 +135,7 @@ describe('SiteToolPanels', () => {
 				<SiteToolPanels
 					site={site}
 					playground={client}
+					mail={[]}
 					activeTabName={activeTabName}
 				/>
 			);

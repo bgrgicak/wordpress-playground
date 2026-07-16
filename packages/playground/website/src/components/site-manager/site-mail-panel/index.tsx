@@ -5,7 +5,6 @@ import {
 	CardMedia,
 	Icon,
 	Notice,
-	__experimentalConfirmDialog as ConfirmDialog,
 	__experimentalDivider as Divider,
 	__experimentalGrid as Grid,
 	__experimentalHStack as HStack,
@@ -17,33 +16,14 @@ import {
 } from '@wordpress/components';
 import { download, file } from '@wordpress/icons';
 import { useEffect, useRef, useState } from 'react';
-import type { KeyboardEvent } from 'react';
-import type { PlaygroundClient } from '@wp-playground/remote';
 import type {
 	CapturedMail,
 	CapturedMailAttachment,
 } from '../../../lib/mail-capture';
-import {
-	createEmailPreviewDocument,
-	EMAIL_LINK_CLICK_MESSAGE_TYPE,
-} from './email-preview-document';
-import { getEmailLinkAction, type EmailLinkAction } from './link-navigation';
+import { createEmailPreviewDocument } from './email-preview-document';
 import css from './style.module.css';
 
-type PlaygroundEmailLinkAction = Extract<
-	EmailLinkAction,
-	{ type: 'playground' }
->;
-
-export function SiteMailPanel({
-	mail,
-	playground,
-	playgroundScope,
-}: {
-	mail: CapturedMail[];
-	playground: PlaygroundClient | undefined;
-	playgroundScope: string;
-}) {
+export function SiteMailPanel({ mail }: { mail: CapturedMail[] }) {
 	const [selectedMailId, setSelectedMailId] = useState<string>();
 	const selectedMail =
 		mail.find(({ id }) => id === selectedMailId) || mail[0];
@@ -111,288 +91,239 @@ export function SiteMailPanel({
 					})}
 				</ItemGroup>
 			</aside>
-			<MailPreview
-				mail={selectedMail}
-				playground={playground}
-				playgroundScope={playgroundScope}
-			/>
+			<MailPreview mail={selectedMail} />
 		</section>
 	);
 }
 
-function MailPreview({
-	mail,
-	playground,
-	playgroundScope,
-}: {
-	mail: CapturedMail;
-	playground: PlaygroundClient | undefined;
-	playgroundScope: string;
-}) {
+function MailPreview({ mail }: { mail: CapturedMail }) {
 	const htmlPreviewRef = useRef<HTMLIFrameElement>(null);
-	const [linkMessageChannel] = useState(() => crypto.randomUUID());
-	const [pendingPlaygroundLink, setPendingPlaygroundLink] =
-		useState<PlaygroundEmailLinkAction>();
-
-	function navigateToPendingLink() {
-		if (!pendingPlaygroundLink) {
-			return;
-		}
-
-		setPendingPlaygroundLink(undefined);
-		void playground?.goTo(pendingPlaygroundLink.path);
-	}
-
-	function cancelPendingLink() {
-		setPendingPlaygroundLink(undefined);
-	}
-
-	function openPendingLinkInNewTab() {
-		if (!pendingPlaygroundLink) {
-			return;
-		}
-
-		setPendingPlaygroundLink(undefined);
-		window.open(pendingPlaygroundLink.url, '_blank', 'noopener,noreferrer');
-	}
 
 	useEffect(() => {
 		const iframe = htmlPreviewRef.current;
 		if (!iframe) {
 			return;
 		}
+		const htmlPreview = iframe;
 
-		const handleLinkClick = (event: MessageEvent<unknown>) => {
-			if (
-				event.source !== iframe.contentWindow ||
-				!isEmailLinkClickMessage(event.data, linkMessageChannel)
-			) {
+		let contentResizeObserver: ResizeObserver | undefined;
+		let animationFrame: number | undefined;
+
+		function observeIframeContents() {
+			contentResizeObserver?.disconnect();
+			const documentElement =
+				htmlPreview.contentDocument?.documentElement;
+			if (documentElement) {
+				const observer = new ResizeObserver(resizeIframe);
+				observer.observe(documentElement);
+				contentResizeObserver = observer;
+			}
+			resizeIframe();
+		}
+
+		function resizeIframe() {
+			if (animationFrame !== undefined) {
 				return;
 			}
 
-			const action = getEmailLinkAction(event.data.href, playgroundScope);
-			if (action?.type === 'playground') {
-				setPendingPlaygroundLink(action);
-			} else if (action?.type === 'external') {
-				window.open(action.url, '_blank', 'noopener,noreferrer');
+			animationFrame = window.requestAnimationFrame(() => {
+				animationFrame = undefined;
+				const documentElement =
+					htmlPreview.contentDocument?.documentElement;
+				if (!documentElement) {
+					return;
+				}
+
+				const contentHeight = Math.ceil(
+					Math.max(
+						documentElement.scrollHeight,
+						documentElement.offsetHeight,
+						documentElement.getBoundingClientRect().height
+					)
+				);
+				htmlPreview.style.height = `${Math.max(1, contentHeight)}px`;
+			});
+		}
+
+		// The sidebar can resize without the window changing size.
+		const parentResizeObserver = new ResizeObserver(resizeIframe);
+		if (htmlPreview.parentElement) {
+			parentResizeObserver.observe(htmlPreview.parentElement);
+		}
+
+		htmlPreview.addEventListener('load', observeIframeContents);
+		observeIframeContents();
+
+		return () => {
+			htmlPreview.removeEventListener('load', observeIframeContents);
+			contentResizeObserver?.disconnect();
+			parentResizeObserver.disconnect();
+			if (animationFrame !== undefined) {
+				window.cancelAnimationFrame(animationFrame);
 			}
 		};
-
-		window.addEventListener('message', handleLinkClick);
-		return () => window.removeEventListener('message', handleLinkClick);
-	}, [linkMessageChannel, mail.id, playground, playgroundScope]);
+	}, [mail.id]);
 
 	return (
-		<>
-			<VStack
-				className={css.mailPreview}
-				spacing={4}
-				justify="flex-start"
-			>
-				<VStack spacing={2}>
-					<Heading level={2}>{mail.subject}</Heading>
-					<div className={css.mailMetadata}>
-						<VStack spacing={1}>
-							{mail.from && (
-								<Text>
-									<strong>From:</strong> {mail.from}
-								</Text>
-							)}
-							{mail.to.length > 0 && (
-								<Text>
-									<strong>To:</strong> {mail.to.join(', ')}
-								</Text>
-							)}
-							{mail.cc.length > 0 && (
-								<Text>
-									<strong>Cc:</strong> {mail.cc.join(', ')}
-								</Text>
-							)}
-						</VStack>
-						<VStack spacing={1}>
-							{mail.date && (
-								<Text>
-									<strong>Sent:</strong>{' '}
-									{formatDate(mail.date)}
-								</Text>
-							)}
-							{mail.attachments.length > 0 && (
-								<Text>
-									<strong>Attachments:</strong>{' '}
-									{mail.attachments.length}
-								</Text>
-							)}
-						</VStack>
-					</div>
-				</VStack>
-				<Divider />
-				{mail.parseError ? (
-					<Notice status="error" isDismissible={false}>
-						The message could not be parsed: {mail.parseError}
-					</Notice>
-				) : mail.html ? (
-					<>
-						{/* A sandboxed srcDoc cannot load Playground resources
-						    through the service worker. The CSP blocks scripts. */}
-						<iframe
-							ref={htmlPreviewRef}
-							className={
-								mail.attachments.length > 0
-									? `${css.htmlPreview} ${css.htmlPreviewWithAttachments}`
-									: css.htmlPreview
-							}
-							title={`Contents of ${mail.subject}`}
-							srcDoc={createEmailPreviewDocument(
-								mail.html,
-								linkMessageChannel
-							)}
-						/>
-					</>
-				) : mail.text ? (
-					<pre className={css.textBody}>{mail.text}</pre>
-				) : (
-					<Text>This message has no body.</Text>
-				)}
-				{mail.attachments.length > 0 && (
-					<>
-						<Divider />
-						<VStack className={css.attachments} spacing={2}>
-							<Heading level={3}>
-								{mail.attachments.length === 1
-									? '1 attachment'
-									: `${mail.attachments.length} attachments`}
-							</Heading>
-							<Grid
-								as="ul"
-								alignment="stretch"
-								gap={3}
-								templateColumns="repeat(auto-fit, minmax(min(100%, 180px), 1fr))"
-								className={css.attachmentList}
-								aria-label="Attachments"
-							>
-								{mail.attachments.map((attachment, index) => (
-									<li
-										key={`${attachment.filename}-${index}`}
-										className={css.attachmentItem}
+		<VStack className={css.mailPreview} spacing={4} justify="flex-start">
+			<VStack spacing={2}>
+				<Heading level={2}>{mail.subject}</Heading>
+				<div className={css.mailMetadata}>
+					<VStack spacing={1}>
+						{mail.from && (
+							<Text>
+								<strong>From:</strong> {mail.from}
+							</Text>
+						)}
+						{mail.to.length > 0 && (
+							<Text>
+								<strong>To:</strong> {mail.to.join(', ')}
+							</Text>
+						)}
+						{mail.cc.length > 0 && (
+							<Text>
+								<strong>Cc:</strong> {mail.cc.join(', ')}
+							</Text>
+						)}
+					</VStack>
+					<VStack spacing={1}>
+						{mail.date && (
+							<Text>
+								<strong>Sent:</strong> {formatDate(mail.date)}
+							</Text>
+						)}
+						{mail.attachments.length > 0 && (
+							<Text>
+								<strong>Attachments:</strong>{' '}
+								{mail.attachments.length}
+							</Text>
+						)}
+					</VStack>
+				</div>
+			</VStack>
+			<Divider />
+			{mail.parseError ? (
+				<Notice status="error" isDismissible={false}>
+					The message could not be parsed: {mail.parseError}
+				</Notice>
+			) : mail.html ? (
+				/* Same-origin keeps Playground resources under service-worker control.
+				 * Popups escape the sandbox so linked sites work normally. */
+				<iframe
+					ref={htmlPreviewRef}
+					className={
+						mail.attachments.length > 0
+							? `${css.htmlPreview} ${css.htmlPreviewWithAttachments}`
+							: css.htmlPreview
+					}
+					title={`Contents of ${mail.subject}`}
+					sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"
+					srcDoc={createEmailPreviewDocument(mail.html)}
+				/>
+			) : mail.text ? (
+				<pre className={css.textBody}>{mail.text}</pre>
+			) : (
+				<Text>This message has no body.</Text>
+			)}
+			{mail.attachments.length > 0 && (
+				<>
+					<Divider />
+					<VStack className={css.attachments} spacing={2}>
+						<Heading level={3}>
+							{mail.attachments.length === 1
+								? '1 attachment'
+								: `${mail.attachments.length} attachments`}
+						</Heading>
+						<Grid
+							as="ul"
+							alignment="stretch"
+							gap={3}
+							templateColumns="repeat(auto-fit, minmax(min(100%, 180px), 1fr))"
+							className={css.attachmentList}
+							aria-label="Attachments"
+						>
+							{mail.attachments.map((attachment, index) => (
+								<li
+									key={`${attachment.filename}-${index}`}
+									className={css.attachmentItem}
+								>
+									<Card
+										className={css.attachmentCard}
+										elevation={0}
+										size="small"
 									>
-										<Card
-											className={css.attachmentCard}
-											elevation={0}
-											size="small"
+										<CardMedia
+											className={css.attachmentMedia}
 										>
-											<CardMedia
-												className={css.attachmentMedia}
-											>
-												<div
-													className={
-														css.attachmentPreview
-													}
-												>
-													<AttachmentPreview
-														attachment={attachment}
-													/>
-												</div>
-												<VStack
-													className={
-														css.attachmentActions
-													}
-													spacing={1}
-													justify="center"
-												>
-													<Text variant="muted">
-														{formatFileSize(
-															attachment.size
-														)}
-													</Text>
-													<Button
-														className={
-															css.attachmentDownload
-														}
-														variant="secondary"
-														size="compact"
-														icon={download}
-														href={
-															attachment.dataUrl
-														}
-														download={
-															attachment.filename
-														}
-														label={`Download ${attachment.filename}`}
-														showTooltip
-													/>
-												</VStack>
-											</CardMedia>
-											<CardBody
+											<div
 												className={
-													css.attachmentDetails
+													css.attachmentPreview
 												}
-												size="xSmall"
+											>
+												<AttachmentPreview
+													attachment={attachment}
+												/>
+											</div>
+											<VStack
+												className={
+													css.attachmentActions
+												}
+												spacing={2}
+												justify="center"
 											>
 												<Text
-													className={
-														css.attachmentFilename
-													}
-													weight={600}
-													truncate
-													numberOfLines={1}
-													title={attachment.filename}
+													size={12}
+													lineHeight="16px"
+													variant="muted"
 												>
-													{attachment.filename}
+													Size:{' '}
+													{formatFileSize(
+														attachment.size
+													)}
 												</Text>
-											</CardBody>
-										</Card>
-									</li>
-								))}
-							</Grid>
-						</VStack>
-					</>
-				)}
-			</VStack>
-			<ConfirmDialog
-				isOpen={pendingPlaygroundLink !== undefined}
-				onConfirm={navigateToPendingLink}
-				onCancel={cancelPendingLink}
-				confirmButtonText="Go to page"
-				cancelButtonText="Cancel"
-				role="alertdialog"
-				contentLabel="Open email link"
-			>
-				<span>
-					This link will change the page shown in the current
-					Playground.{' '}
-					<Button
-						variant="link"
-						onClick={openPendingLinkInNewTab}
-						onKeyDown={(
-							event: KeyboardEvent<HTMLButtonElement>
-						) => {
-							if (event.key === 'Enter') {
-								event.stopPropagation();
-							}
-						}}
-					>
-						Open in new tab
-					</Button>
-				</span>
-			</ConfirmDialog>
-		</>
-	);
-}
-
-function isEmailLinkClickMessage(
-	data: unknown,
-	messageChannel: string
-): data is {
-	type: typeof EMAIL_LINK_CLICK_MESSAGE_TYPE;
-	channel: string;
-	href: string;
-} {
-	return (
-		typeof data === 'object' &&
-		data !== null &&
-		(data as { type?: unknown }).type === EMAIL_LINK_CLICK_MESSAGE_TYPE &&
-		(data as { channel?: unknown }).channel === messageChannel &&
-		typeof (data as { href?: unknown }).href === 'string'
+												<Button
+													className={
+														css.attachmentDownload
+													}
+													variant="link"
+													href={attachment.dataUrl}
+													download={
+														attachment.filename
+													}
+													label={`Download ${attachment.filename}`}
+												>
+													<Icon
+														icon={download}
+														size={16}
+													/>
+													<span>Download</span>
+												</Button>
+											</VStack>
+										</CardMedia>
+										<CardBody
+											className={css.attachmentDetails}
+											size="xSmall"
+										>
+											<Text
+												className={
+													css.attachmentFilename
+												}
+												weight={600}
+												truncate
+												numberOfLines={1}
+												title={attachment.filename}
+											>
+												{attachment.filename}
+											</Text>
+										</CardBody>
+									</Card>
+								</li>
+							))}
+						</Grid>
+					</VStack>
+				</>
+			)}
+		</VStack>
 	);
 }
 

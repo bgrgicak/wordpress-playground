@@ -49,6 +49,7 @@ export function SiteInfoPanel({
 					<SiteToolPanels
 						site={site}
 						playground={playground}
+						mail={clientInfo?.mail ?? []}
 						activeTabName={activeTabName}
 					/>
 				</FlexItem>

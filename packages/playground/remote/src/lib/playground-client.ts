@@ -53,8 +53,6 @@ export interface WebClientMixin extends ProgressReceiver {
 
 	journalFSEvents: PlaygroundWorkerEndpoint['journalFSEvents'];
 	replayFSJournal: PlaygroundWorkerEndpoint['replayFSJournal'];
-	addEventListener: PlaygroundWorkerEndpoint['addEventListener'];
-	removeEventListener: PlaygroundWorkerEndpoint['removeEventListener'];
 	backfillStaticFilesRemovedFromMinifiedBuild: PlaygroundWorkerEndpoint['backfillStaticFilesRemovedFromMinifiedBuild'];
 	hasCachedStaticFilesRemovedFromMinifiedBuild: PlaygroundWorkerEndpoint['hasCachedStaticFilesRemovedFromMinifiedBuild'];
 

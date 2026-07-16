@@ -17,6 +17,7 @@ import { Icon } from '@wordpress/components';
 import {
 	close,
 	download,
+	envelope,
 	grid,
 	list,
 	page,
@@ -125,6 +126,12 @@ const DOCK_ITEMS: DockItem[] = [
 		icon: <Icon icon={list} size={24} />,
 	},
 	{
+		section: 'mail',
+		label: 'Email',
+		ariaLabel: 'Email',
+		icon: <Icon icon={envelope} size={24} />,
+	},
+	{
 		section: 'share',
 		label: 'Export',
 		ariaLabel: 'Export',
@@ -167,6 +174,10 @@ const PANE_COPY: Record<
 		title: 'Logs',
 		description: 'PHP, WordPress, and Playground runtime messages.',
 	},
+	mail: {
+		title: 'Email',
+		description: 'Preview messages sent by this Playground.',
+	},
 	share: {
 		title: 'Export',
 		description: '',
@@ -204,7 +215,9 @@ export function Dock({
 	const isMobile = useIsMobileDock();
 	const isEditorSection = section === 'blueprint' || section === 'files';
 	const isFixedHeightSection =
-		section === 'new' || (section === 'share' && shareExportOpen);
+		section === 'new' ||
+		section === 'mail' ||
+		(section === 'share' && shareExportOpen);
 	const showSharedHeader = !isEditorSection;
 	const siteSettingsVisible = dockPaneIsOpen && section === 'settings';
 	const playgroundTitle =

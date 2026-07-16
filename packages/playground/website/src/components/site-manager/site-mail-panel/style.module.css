@@ -25,6 +25,7 @@
 }
 
 .mail-preview {
+	flex: 1 1 0;
 	min-width: 0;
 	min-height: 0;
 	overflow-y: auto;
@@ -159,6 +160,11 @@
 }
 
 .attachment-download {
+	gap: 4px;
+	min-width: 0;
+	padding: 0;
+	font-size: 13px;
+	line-height: 16px;
 	pointer-events: auto;
 }
 
@@ -173,18 +179,27 @@
 	.mail-panel {
 		display: flex;
 		flex-direction: column;
+		background: var(--wp-components-color-gray-100, #f0f0f0);
 	}
 
 	.mail-list {
 		flex: 0 1 auto;
 		max-height: 34%;
 		border-right: 0;
-		border-bottom: 1px solid var(--color-gray-200);
+		border-bottom: 0;
+		background: #ffffff;
 	}
 
 	.mail-preview {
-		flex: 1 1 0;
+		margin: 12px;
 		padding: 16px;
+		background: #ffffff;
+		border: 1px solid var(--color-gray-300, #dddddd);
+		border-radius: 8px;
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+		box-sizing: border-box;
+		overflow-x: hidden;
+		overflow-y: auto;
 	}
 
 	.mail-metadata {

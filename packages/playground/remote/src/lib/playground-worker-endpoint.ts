@@ -235,6 +235,7 @@ export abstract class PlaygroundWorkerEndpoint extends PHPWorker {
 				});
 			},
 			onPHPInstanceCreated: async (php: PHP, { isPrimary }) => {
+				this.registerWorkerEventListeners(php, 'sendmail.spawned');
 				/**
 				 * The remote runtime has no mail server. Capture sendmail stdin as an
 				 * event through a null transport; consumers must relay the message if

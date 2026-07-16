@@ -39,15 +39,19 @@ export function subscribeToMail({
 	}
 
 	let nextMessageId = 0;
-	const handleMailSent = async (event: unknown) => {
-		if (signal.aborted || !isMailSentEvent(event)) {
+	const handleSendmailSpawned = async (event: unknown) => {
+		if (signal.aborted || !isSendmailSpawnedEvent(event)) {
 			return;
 		}
 
 		const id = `${siteSlug}-${nextMessageId++}`;
 		let mail: CapturedMail;
 		try {
-			mail = await parseMailMessage(event.message, { id });
+			const message = await readMailMessage(event.stdin, signal);
+			if (signal.aborted) {
+				return;
+			}
+			mail = await parseMailMessage(message, { id });
 		} catch (error) {
 			mail = createFailedMail(id, error);
 		}
@@ -57,7 +61,26 @@ export function subscribeToMail({
 		}
 	};
 
-	void client.addEventListener('email.sent', handleMailSent);
+	void addSendmailListener();
+
+	async function addSendmailListener() {
+		const removeListener = await client.addEventListener(
+			'sendmail.spawned',
+			handleSendmailSpawned
+		);
+		if (signal.aborted) {
+			await removeListener();
+			return;
+		}
+
+		signal.addEventListener(
+			'abort',
+			() => {
+				void removeListener();
+			},
+			{ once: true }
+		);
+	}
 }
 
 export async function parseMailMessage(
@@ -84,15 +107,45 @@ export async function parseMailMessage(
 	};
 }
 
-function isMailSentEvent(
-	event: unknown
-): event is { type: 'email.sent'; message: string } {
+function isSendmailSpawnedEvent(event: unknown): event is {
+	type: 'sendmail.spawned';
+	stdin: ReadableStream<Uint8Array>;
+} {
+	const stdin = (event as { stdin?: unknown } | null)?.stdin;
 	return (
 		typeof event === 'object' &&
 		event !== null &&
-		(event as { type?: unknown }).type === 'email.sent' &&
-		typeof (event as { message?: unknown }).message === 'string'
+		(event as { type?: unknown }).type === 'sendmail.spawned' &&
+		typeof stdin === 'object' &&
+		stdin !== null &&
+		typeof (stdin as ReadableStream<Uint8Array>).getReader === 'function'
 	);
+}
+
+async function readMailMessage(
+	stream: ReadableStream<Uint8Array>,
+	signal: AbortSignal
+): Promise<string> {
+	const reader = stream.getReader();
+	const decoder = new TextDecoder();
+	let message = '';
+	const cancelRead = () => {
+		void reader.cancel();
+	};
+	signal.addEventListener('abort', cancelRead, { once: true });
+
+	try {
+		while (true) {
+			const { value, done } = await reader.read();
+			if (done) {
+				return message + decoder.decode();
+			}
+			message += decoder.decode(value, { stream: true });
+		}
+	} finally {
+		signal.removeEventListener('abort', cancelRead);
+		reader.releaseLock();
+	}
 }
 
 function createFailedMail(id: string, error: unknown): CapturedMail {

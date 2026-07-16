@@ -4,10 +4,12 @@ import type { PlaygroundClient } from '@wp-playground/client';
 import type { SiteInfo } from '../../../lib/state/redux/slice-sites';
 import { setDockPaneOpen } from '../../../lib/state/redux/slice-ui';
 import { useAppDispatch, useAppSelector } from '../../../lib/state/redux/store';
+import type { CapturedMail } from '../../../lib/mail-capture';
 import { SiteLogs } from '../../log-modal';
 import { OfflineNotice } from '../../offline-notice';
 import { PaneLoading } from '../../pane-loading';
 import { SiteDatabasePanel } from '../site-database-panel';
+import { SiteMailPanel } from '../site-mail-panel';
 import { ActiveSiteSettingsForm } from '../site-settings-form/active-site-settings-form';
 import css from './style.module.css';
 
@@ -26,16 +28,19 @@ export type SiteInfoTabName =
 	| 'files'
 	| 'blueprint'
 	| 'database'
-	| 'logs';
+	| 'logs'
+	| 'mail';
 
 /** Renders the tool surfaces selected by the site information tabs. */
 export function SiteToolPanels({
 	site,
 	playground,
+	mail,
 	activeTabName,
 }: {
 	site: SiteInfo;
 	playground: PlaygroundClient | undefined;
+	mail: CapturedMail[];
 	activeTabName: SiteInfoTabName | null;
 }) {
 	const offline = useAppSelector((state) => state.ui.offline);
@@ -54,6 +59,8 @@ export function SiteToolPanels({
 		activeTabName === 'database' || mountedTabNames.includes('database');
 	const logsMounted =
 		activeTabName === 'logs' || mountedTabNames.includes('logs');
+	const mailMounted =
+		activeTabName === 'mail' || mountedTabNames.includes('mail');
 
 	// Mount each tool lazily, then retain its draft, selection, scroll position,
 	// and subscriptions while another Dock destination is visible.
@@ -176,6 +183,16 @@ export function SiteToolPanels({
 					<div className={classNames(css.logsWrapper)}>
 						<SiteLogs className={css.logsSection} />
 					</div>
+				</div>
+			)}
+			{mailMounted && (
+				<div
+					className={classNames(css.tabContents, css.mailTab, {
+						[css.tabHidden]: activeTabName !== 'mail',
+					})}
+					hidden={activeTabName !== 'mail'}
+				>
+					<SiteMailPanel mail={mail} />
 				</div>
 			)}
 		</>

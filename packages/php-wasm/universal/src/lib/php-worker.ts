@@ -43,7 +43,7 @@ export type LimitedPHPApi = Pick<
 	absoluteUrl: PHP['absoluteUrl'];
 	addEventListener:
 		| PHP['addEventListener']
-		| ((event: string, listener: (event: any) => any) => void);
+		| ((event: string, listener: (event: any) => any) => () => void);
 	removeEventListener:
 		| PHP['removeEventListener']
 		| ((event: string, listener: (event: any) => any) => void);
@@ -63,6 +63,8 @@ export class PHPWorker implements LimitedPHPApi, AsyncDisposable {
 	private chroot: string | null = null;
 
 	#eventListeners: Map<string, Set<PHPWorkerEventListener>> = new Map();
+	#forwardedEventTypes = new WeakMap<PHP, Set<string>>();
+	#messageForwardingPHPInstances = new WeakSet<PHP>();
 
 	onMessageListeners: MessageListener[] = [];
 	/** @inheritDoc */
@@ -344,11 +346,15 @@ export class PHPWorker implements LimitedPHPApi, AsyncDisposable {
 	addEventListener(
 		eventType: PHPWorkerEvent['type'],
 		listener: PHPWorkerEventListener
-	): void {
+	): () => void {
 		if (!this.#eventListeners.has(eventType)) {
 			this.#eventListeners.set(eventType, new Set());
 		}
-		this.#eventListeners.get(eventType)!.add(listener);
+		const listeners = this.#eventListeners.get(eventType)!;
+		listeners.add(listener);
+		return () => {
+			listeners.delete(listener);
+		};
 	}
 
 	/**
@@ -402,9 +408,11 @@ export class PHPWorker implements LimitedPHPApi, AsyncDisposable {
 	}
 
 	protected registerWorkerListeners(php: PHP) {
-		php.addEventListener('*', async (event) => {
-			this.dispatchEvent(event);
-		});
+		this.registerWorkerEventListeners(php);
+		if (this.#messageForwardingPHPInstances.has(php)) {
+			return;
+		}
+		this.#messageForwardingPHPInstances.add(php);
 		php.onMessage(async (message) => {
 			for (const listener of this.onMessageListeners) {
 				const returnData = await listener(message);
@@ -414,6 +422,34 @@ export class PHPWorker implements LimitedPHPApi, AsyncDisposable {
 			}
 			return '';
 		});
+	}
+
+	/**
+	 * Forwards selected events from a PHP instance to this worker endpoint.
+	 *
+	 * HTTP requests acquire PHP instances without going through
+	 * acquirePHPInstance(), so consumers that need events from those requests
+	 * can opt in to individual event types. Registering full forwarding later
+	 * upgrades the existing listener instead of adding a duplicate one.
+	 */
+	protected registerWorkerEventListeners(
+		php: PHP,
+		eventType: PHPWorkerEvent['type'] | '*' = '*'
+	) {
+		let forwardedEventTypes = this.#forwardedEventTypes.get(php);
+		if (!forwardedEventTypes) {
+			forwardedEventTypes = new Set();
+			this.#forwardedEventTypes.set(php, forwardedEventTypes);
+			php.addEventListener('*', async (event) => {
+				if (
+					forwardedEventTypes!.has('*') ||
+					forwardedEventTypes!.has(event.type)
+				) {
+					this.dispatchEvent(event);
+				}
+			});
+		}
+		forwardedEventTypes.add(eventType);
 	}
 
 	async [Symbol.asyncDispose]() {
