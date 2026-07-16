@@ -135,7 +135,6 @@ describe('SiteToolPanels', () => {
 				<SiteToolPanels
 					site={site}
 					playground={client}
-					mail={[]}
 					activeTabName={activeTabName}
 				/>
 			);
