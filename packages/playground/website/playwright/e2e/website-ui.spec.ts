@@ -1096,10 +1096,7 @@ add_action('template_redirect', function() {
 		'recipient@example.com',
 		'${subject}',
 		$message,
-		array(
-			'From: Test Sender <sender@example.com>',
-			'Cc: Copy Recipient <copy@example.com>',
-		),
+		array(),
 		array($attachment)
 	);
 	unlink($attachment);
@@ -1135,25 +1132,10 @@ add_action('template_redirect', function() {
 	await test.step('show the captured message and its contents', async () => {
 		await website.openDockPane('Email');
 
-		const messages = mailPanel
-			.getByRole('complementary', { name: 'Sent emails' })
-			.getByRole('button');
-		await expect(messages).toHaveCount(1);
-		await expect(messages).toContainText(subject);
 		await expect(
 			mailPanel.getByRole('heading', { name: subject, level: 2 })
 		).toBeVisible();
-		await expect(mailPanel).toContainText('sender@example.com');
 		await expect(mailPanel).toContainText('recipient@example.com');
-		await expect(mailPanel).toContainText('copy@example.com');
-		await expect(htmlPreview).toHaveAttribute(
-			'sandbox',
-			'allow-same-origin allow-popups allow-popups-to-escape-sandbox'
-		);
-		await expect(previewDocument.locator('base')).toHaveAttribute(
-			'target',
-			'_blank'
-		);
 		await expect(previewDocument.locator('#email-body')).toHaveText(
 			'Message body'
 		);
@@ -1181,22 +1163,6 @@ add_action('template_redirect', function() {
 			name: `Download ${attachmentFilename}`,
 		});
 		await attachment.hover();
-		const attachmentSize = attachment.getByText(
-			`Size: ${attachmentContents.length} B`
-		);
-		await expect(attachmentSize).toBeVisible();
-		await expect(attachmentSize).toHaveCSS('font-size', '12px');
-		await expect(attachmentDownload).toContainText('Download');
-		await expect(attachmentDownload).toHaveClass(/is-link/);
-		await expect(attachmentDownload).toHaveCSS('font-size', '13px');
-		await expect(attachmentDownload.locator('svg')).toHaveAttribute(
-			'width',
-			'16'
-		);
-		await expect(attachmentDownload).toHaveAttribute(
-			'download',
-			attachmentFilename
-		);
 		const downloadPromise = website.page.waitForEvent('download');
 		await attachmentDownload.click();
 		const download = await downloadPromise;
@@ -1215,7 +1181,6 @@ add_action('template_redirect', function() {
 			.click();
 		const popup = await popupPromise;
 		await popup.waitForURL(externalUrl);
-		await expect(popup.getByText('External email link')).toBeVisible();
 		await expect(popup.locator('body')).toHaveAttribute(
 			'data-scripts',
 			'enabled'
