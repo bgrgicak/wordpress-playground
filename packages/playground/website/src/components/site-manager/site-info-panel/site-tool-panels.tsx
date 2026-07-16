@@ -1,7 +1,6 @@
 import classNames from 'classnames';
 import { lazy, Suspense, useEffect, useState } from 'react';
 import type { PlaygroundClient } from '@wp-playground/client';
-import { selectClientInfoBySiteSlug } from '../../../lib/state/redux/slice-clients';
 import type { SiteInfo } from '../../../lib/state/redux/slice-sites';
 import { setDockPaneOpen } from '../../../lib/state/redux/slice-ui';
 import { useAppDispatch, useAppSelector } from '../../../lib/state/redux/store';
@@ -42,10 +41,6 @@ export function SiteToolPanels({
 	activeTabName: SiteInfoTabName | null;
 }) {
 	const offline = useAppSelector((state) => state.ui.offline);
-	const mail =
-		useAppSelector(
-			(state) => selectClientInfoBySiteSlug(state, site.slug)?.mail
-		) ?? [];
 	const dispatch = useAppDispatch();
 	const [mountedTabNames, setMountedTabNames] = useState<SiteInfoTabName[]>(
 		() => (activeTabName ? [activeTabName] : [])
@@ -194,7 +189,7 @@ export function SiteToolPanels({
 					})}
 					hidden={activeTabName !== 'mail'}
 				>
-					<SiteMailPanel mail={mail} />
+					<SiteMailPanel />
 				</div>
 			)}
 		</>

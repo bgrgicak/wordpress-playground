@@ -14,7 +14,7 @@ describe('Dock positioning', () => {
 				dockSize: { width: 800, height: 0 },
 				dockCenter: null,
 				viewportSize: { width: 1200, height: 800 },
-				isWideSection: false,
+				isEditorSection: false,
 				isFixedHeightSection: false,
 				isPlaygroundsSection: false,
 			})
@@ -30,7 +30,7 @@ describe('Dock positioning', () => {
 				paneHeight: 400,
 				toastHeight: 62,
 				paneOpen: false,
-				isWideSection: false,
+				isEditorSection: false,
 			})
 		).toBeUndefined();
 	});
@@ -42,7 +42,7 @@ describe('Dock positioning', () => {
 				dockSize: { width: 800, height: 80 },
 				dockCenter: null,
 				viewportSize: { width: 1200, height: 100 },
-				isWideSection: false,
+				isEditorSection: false,
 				isFixedHeightSection: false,
 				isPlaygroundsSection: false,
 			})
@@ -56,7 +56,7 @@ describe('Dock positioning', () => {
 				dockSize: { width: 390, height: 72 },
 				dockCenter: null,
 				viewportSize: { width: 390, height: 844 },
-				isWideSection: false,
+				isEditorSection: false,
 				isFixedHeightSection: false,
 				isPlaygroundsSection: false,
 			})
@@ -70,7 +70,7 @@ describe('Dock positioning', () => {
 				dockSize: { width: 800, height: 80 },
 				dockCenter: 100,
 				viewportSize: { width: 1200, height: 800 },
-				isWideSection: false,
+				isEditorSection: false,
 				isFixedHeightSection: true,
 				isPlaygroundsSection: true,
 			})
@@ -95,7 +95,7 @@ describe('Dock positioning', () => {
 				paneHeight: 400,
 				toastHeight: 62,
 				paneOpen: true,
-				isWideSection: false,
+				isEditorSection: false,
 			})
 		).toEqual({ bottom: '504px', left: '308px' });
 	});
@@ -112,7 +112,7 @@ describe('Dock positioning', () => {
 				paneHeight: 0,
 				toastHeight: 62,
 				paneOpen: false,
-				isWideSection: false,
+				isEditorSection: false,
 			})
 		).toEqual({ bottom: '92px', left: '5px' });
 	});
@@ -122,14 +122,14 @@ describe('Dock positioning', () => {
 			getDockPaneCenter({
 				dockCenter: 0,
 				viewportWidth: 1200,
-				isWideSection: false,
+				isEditorSection: false,
 			})
 		).toBe(308);
 		expect(
 			getDockPaneCenter({
 				dockCenter: 1200,
 				viewportWidth: 1200,
-				isWideSection: false,
+				isEditorSection: false,
 			})
 		).toBe(892);
 	});

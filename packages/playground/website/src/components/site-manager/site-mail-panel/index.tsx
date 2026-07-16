@@ -8,11 +8,15 @@ import {
 	__experimentalVStack as VStack,
 } from '@wordpress/components';
 import { useState } from 'react';
-import type { CapturedMail } from '../../../lib/mail-capture';
+import {
+	getActiveClientInfo,
+	useAppSelector,
+} from '../../../lib/state/redux/store';
 import { MailPreview } from './mail-preview';
 import css from './style.module.css';
 
-export function SiteMailPanel({ mail }: { mail: CapturedMail[] }) {
+export function SiteMailPanel() {
+	const mail = useAppSelector(getActiveClientInfo)?.mail ?? [];
 	const [selectedMailId, setSelectedMailId] = useState<string>();
 	const selectedMail =
 		mail.find(({ id }) => id === selectedMailId) || mail[0];

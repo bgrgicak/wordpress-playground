@@ -975,7 +975,7 @@ export function Dock({
 		dockSize,
 		dockCenter,
 		viewportSize,
-		isWideSection: isEditorSection,
+		isEditorSection,
 		isFixedHeightSection: usesStablePaneHeight,
 		isPlaygroundsSection: section === 'playgrounds',
 	});
@@ -989,7 +989,7 @@ export function Dock({
 		paneHeight,
 		toastHeight: operationToastHeight,
 		paneOpen: dockPaneIsOpen,
-		isWideSection: isEditorSection,
+		isEditorSection,
 	});
 
 	return (

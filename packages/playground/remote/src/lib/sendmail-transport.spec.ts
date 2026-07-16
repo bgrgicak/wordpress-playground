@@ -59,7 +59,7 @@ describe('remote sendmail transport', () => {
 		);
 		expect(addEventListener).toHaveBeenCalledOnce();
 		expect(addEventListener).toHaveBeenCalledWith(
-			'*',
+			'sendmail.spawned',
 			expect.any(Function)
 		);
 	});
